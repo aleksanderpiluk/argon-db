@@ -1,0 +1,3 @@
+struct SegmentCtl {}
+
+impl SegmentCtl {}
