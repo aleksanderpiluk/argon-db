@@ -1,24 +1,30 @@
-use std::thread;
+use std::{sync::Arc, thread};
 
 use crate::core::error::ExecPoolError;
 use crossbeam::deque::Injector;
 
+use super::ExecPoolTask;
+
+const MAX_EXEC_POOL_SIZE: usize = 512;
+
 pub struct ExecPoolCtl {
-    task_queue: Injector<ExecPoolTask>,
+    task_queue: Arc<Injector<ExecPoolTask>>,
 }
 
 impl ExecPoolCtl {
     pub fn init(pool_size: usize) -> Result<Self, ExecPoolError> {
         check_input_pool_size(pool_size)?;
 
-        let task_queue = Injector::new();
+        let task_queue = Arc::new(Injector::new());
 
         for id in 0..pool_size {
-            thread::spawn(|| {
-                loop {}
-                // task_queue.steal().success(
+            let task_queue = task_queue.clone();
+            thread::spawn(move || loop {
+                match task_queue.steal().success() {
+                    Some(task) => println!("There is a task! ID: {}", id),
+                    None => std::thread::yield_now(),
+                };
             });
-            println!("{}", id);
         }
 
         Ok(Self { task_queue })
@@ -31,16 +37,17 @@ impl ExecPoolCtl {
 
 fn check_input_pool_size(pool_size: usize) -> Result<(), ExecPoolError> {
     if pool_size == 0 {
-        return Err(ExecPoolError::new("Execution pool size cannot be 0"));
+        return Err(ExecPoolError::new(
+            "Execution pool size must be greater than 0",
+        ));
     }
 
-    if pool_size > 1024 {
-        return Err(ExecPoolError::new(
-            "Execution pool size cannot be bigger than 1024",
-        ));
+    if pool_size > MAX_EXEC_POOL_SIZE {
+        return Err(ExecPoolError::new(format!(
+            "Execution pool size cannot be bigger than {}",
+            MAX_EXEC_POOL_SIZE
+        )));
     }
 
     Ok(())
 }
-
-pub struct ExecPoolTask {}

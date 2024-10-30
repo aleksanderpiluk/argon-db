@@ -2,12 +2,14 @@ use std::sync::atomic::{AtomicBool, AtomicUsize};
 
 use crossbeam_skiplist::SkipSet;
 
+use crate::cell::Cell;
+
 pub struct Segment {
     id: String,
     flush_lock: AtomicBool,
     read_count: AtomicUsize,
     data_size: AtomicUsize,
-    store: SkipSet<()>,
+    store: SkipSet<Cell>,
 }
 
 impl Segment {
@@ -19,5 +21,9 @@ impl Segment {
             data_size: AtomicUsize::new(0),
             store: SkipSet::new(),
         }
+    }
+
+    pub fn insert(&self) {
+        // self.flush_lock.
     }
 }
