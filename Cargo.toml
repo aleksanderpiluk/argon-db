@@ -1,2 +1,2 @@
 [workspace]
-members = ["argon-server"]
+members = ["argon-server", "libargonfile"]
