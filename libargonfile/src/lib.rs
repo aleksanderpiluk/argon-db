@@ -1,19 +1,13 @@
 mod argonfile_reader;
 mod argonfile_writer;
 mod block;
-mod block_header;
-mod block_pointer;
+mod index;
 mod partition;
-mod partition_header;
+mod pointer;
 mod shared;
 mod trailer;
 
+use std::io::{Read, Write};
+
 pub use argonfile_reader::ArgonfileReader;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_block_header_writer_and_reader_integration() {}
-}
+pub use argonfile_writer::ArgonfileWriter;
