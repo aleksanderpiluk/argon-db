@@ -17,6 +17,10 @@ pub struct Partition {
 }
 
 impl Partition {
+    pub fn key(&self) -> &PartitionKey {
+        &self.key
+    }
+
     pub fn into_key(self) -> PartitionKey {
         self.key
     }

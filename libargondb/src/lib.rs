@@ -88,7 +88,7 @@ impl PrimaryKey {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PartitionKey(Box<[u8]>);
 
 impl PartitionKey {
@@ -100,6 +100,12 @@ impl PartitionKey {
 impl Into<Box<[u8]>> for PartitionKey {
     fn into(self) -> Box<[u8]> {
         self.0
+    }
+}
+
+impl AsRef<[u8]> for PartitionKey {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
     }
 }
 

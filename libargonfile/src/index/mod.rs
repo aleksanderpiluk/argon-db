@@ -3,9 +3,12 @@ use crate::pointer::Pointer;
 mod index_builder;
 mod index_entry_reader;
 mod index_entry_writer;
+mod summary_builder;
+mod summary_entry_writer;
 
 pub use index_builder::IndexBuilder;
 pub use index_entry_writer::IndexEntryWriter;
+pub use summary_builder::SummaryBuilder;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IndexEntry {

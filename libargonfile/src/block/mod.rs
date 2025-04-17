@@ -55,6 +55,7 @@ impl BlockIdentifier {
     pub const DATA_BLOCK: BlockIdentifier = BlockIdentifier(*b"BLK_DATA");
     pub const INDEX_BLOCK: BlockIdentifier = BlockIdentifier(*b"BLK_INDX");
     pub const SUMMARY_BLOCK: BlockIdentifier = BlockIdentifier(*b"BLK_SUMM");
+    pub const BLOOM_BLOCK: BlockIdentifier = BlockIdentifier(*b"BLK_FLTR");
 }
 
 impl TryFrom<&[u8]> for BlockIdentifier {
