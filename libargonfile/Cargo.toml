@@ -1,0 +1,12 @@
+[package]
+name = "libargonfile"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libargondb = { path = "../libargondb" }
+anyhow = "1.0.97"
+crc32c = "0.6.8"
+bloomfilter = "3.0.1"

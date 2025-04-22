@@ -1,36 +1,45 @@
-mod api_grpc;
-mod block;
-mod block_cache;
-mod cell;
+use std::thread;
+
+use log4rs::{
+    append::console::ConsoleAppender,
+    config::{Appender, Root},
+    Config,
+};
+use wal::WalCtx;
+
+mod config;
 mod core;
+mod db;
 mod execution;
-mod lock;
-mod memstore;
-mod store_file;
-mod table;
+mod utils;
 mod wal;
 
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
-
-use signal_hook::flag;
-
-use self::core::CoreCtl;
-
 fn main() {
-    let term_now = Arc::new(AtomicBool::new(false));
-    for sig in signal_hook::consts::TERM_SIGNALS {
-        flag::register_conditional_shutdown(*sig, 1, Arc::clone(&term_now)).unwrap();
-        flag::register(*sig, Arc::clone(&term_now)).unwrap();
-    }
+    // log::info!("ArgonDB is starting");
 
-    let core_ctl = CoreCtl::init();
+    // static wal_ctx: WalCtx = WalCtx::new();
 
-    while !term_now.load(Ordering::Relaxed) {
-        std::thread::yield_now();
-    }
+    // thread::spawn(|| {
+    //     log::info!("Spawned the WAL master thread");
+    // });
 
-    core_ctl.shutdown();
+    // static db_ctx: DbCtx = DbCtx::new();
+
+    // thread::spawn(|| {
+    //     log::info!("Spawned the DB master thread");
+    // });
+
+    // let term_now = Arc::new(AtomicBool::new(false));
+    // for sig in signal_hook::consts::TERM_SIGNALS {
+    //     flag::register_conditional_shutdown(*sig, 1, Arc::clone(&term_now)).unwrap();
+    //     flag::register(*sig, Arc::clone(&term_now)).unwrap();
+    // }
+
+    // let core_ctl = CoreCtl::init();
+
+    // while !term_now.load(Ordering::Relaxed) {
+    //     std::thread::yield_now();
+    // }
+
+    // core_ctl.shutdown();
 }
