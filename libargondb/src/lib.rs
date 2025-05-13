@@ -1,3 +1,9 @@
+mod catalog;
+mod core;
+mod op_engine;
+mod query_parser;
+mod storage;
+
 use anyhow::{Context, Ok, Result, anyhow};
 
 #[derive(Debug, Clone)]
