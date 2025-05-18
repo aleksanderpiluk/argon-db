@@ -1,6 +1,6 @@
 use crate::core::buffer_pool::PageStatus;
 
-use super::buffer_pool::{BufferPool, Page};
+use super::buffer_pool::{BufferPool, PageRef};
 
 struct BlockCache {
     pool: BufferPool<BlockId>,
@@ -32,7 +32,7 @@ impl BlockCache {
 
 type BlockId = u64;
 
-type Block = Page<BlockId>;
+type Block = PageRef<BlockId>;
 
 #[cfg(test)]
 mod tests {

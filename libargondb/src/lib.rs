@@ -1,7 +1,10 @@
 mod catalog;
 mod core;
+mod global_state;
+mod io;
 mod op_engine;
 mod query_parser;
+mod runtime;
 mod storage;
 
 use anyhow::{Context, Ok, Result, anyhow};
