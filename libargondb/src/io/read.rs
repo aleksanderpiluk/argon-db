@@ -38,3 +38,7 @@ pub(crate) struct ReadRequest {
     page: *mut [u8],
     state: AtomicU8,
 }
+
+impl ReadRequest {
+    fn new() -> Self {}
+}

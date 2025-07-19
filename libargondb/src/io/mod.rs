@@ -1,4 +1,6 @@
+mod block_cache;
 mod io_uring;
+mod page_manager;
 pub mod read;
 mod read_thread;
 mod sync;
