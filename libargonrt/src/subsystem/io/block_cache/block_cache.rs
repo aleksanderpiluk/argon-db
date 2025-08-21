@@ -1,68 +1,74 @@
-use std::{
-    alloc::{Layout, alloc, dealloc, handle_alloc_error},
-    ptr::NonNull,
+use crate::{
+    foundation::block::BlockTag,
+    subsystem::io::block_cache::pages::{PageRef, PageWeakRef, Pages},
 };
+use heapless::FnvIndexMap;
+use std::sync::Mutex;
 
-use super::{
-    page::Page,
-    page_header::{PageHeader, PageTag},
-};
-
-struct BufferPool {
-    buffer: NonNull<u8>,
-    buffer_layout: Layout,
-    headers: NonNull<PageHeader>,
-    headers_layout: Layout,
+pub struct BlockCache<const PAGE_SIZE: usize, const NUM_PAGES: usize> {
+    pages_manager: PagesManager<NUM_PAGES>,
+    pages: Pages<PAGE_SIZE, NUM_PAGES>,
 }
 
-impl BufferPool {
-    pub fn new(opts: BufferPoolCreationsOpts) -> Self {
-        assert!(opts.is_aligned(), "page size must be aligned");
-
-        let buffer_layout = Layout::array::<u8>(opts.buffer_size()).unwrap();
-        let ptr = unsafe { alloc(buffer_layout) };
-        let buffer = NonNull::new(ptr).unwrap_or_else(|| handle_alloc_error(buffer_layout));
-
-        let headers_layout = Layout::array::<PageHeader>(opts.num_pages).unwrap();
-        let ptr = unsafe { alloc(headers_layout) } as *mut PageHeader;
-        let headers = NonNull::new(ptr).unwrap_or_else(|| handle_alloc_error(headers_layout));
+impl<const PAGE_SIZE: usize, const NUM_PAGES: usize> BlockCache<PAGE_SIZE, NUM_PAGES> {
+    pub fn new() -> Self {
+        let pages = Pages::new();
+        let pages_manager = PagesManager::new();
 
         Self {
-            buffer,
-            buffer_layout,
-            headers,
-            headers_layout,
+            pages,
+            pages_manager,
         }
     }
 
-    pub fn get(tag: PageTag) -> Option<Page> {
-        todo!()
+    pub fn get(&'static self, tag: BlockTag) -> Result<PageRef, ()> {
+        self.pages_manager.get(&self.pages, &tag)
     }
 }
 
-impl Drop for BufferPool {
-    fn drop(&mut self) {
-        // TODO: Maybe assertion that all pages are not references is a good idea
-
-        unsafe {
-            dealloc(self.buffer, self.buffer_layout);
-            dealloc(self.headers, self.headers_layout);
-        };
-    }
+struct PagesManager<const N: usize> {
+    map: Mutex<FnvIndexMap<BlockTag, PageWeakRef, N>>,
 }
 
-struct BufferPoolCreationsOpts {
-    page_size: usize,
-    num_pages: usize,
-}
-
-impl BufferPoolCreationsOpts {
-    fn is_aligned(&self) -> bool {
-        let alignment = size_of::<libc::max_align_t>();
-        self.page_size % alignment == 0
+impl<const N: usize> PagesManager<N> {
+    fn new() -> Self {
+        Self {
+            map: Mutex::new(FnvIndexMap::new()),
+        }
     }
 
-    fn buffer_size(&self) -> usize {
-        self.page_size * self.num_pages
+    fn get<const T: usize, const U: usize>(
+        &self,
+        pages: &'static Pages<T, U>,
+        tag: &BlockTag,
+    ) -> Result<PageRef, ()> {
+        let map = self.map.lock().unwrap();
+
+        if let Some(page) = map.get(tag) {
+            return Ok(page.new_page_ref());
+        }
+
+        drop(map);
+
+        self.assign_page(pages, tag)
+    }
+
+    fn assign_page<const T: usize, const U: usize>(
+        &self,
+        pages: &'static Pages<T, U>,
+        tag: &BlockTag,
+    ) -> Result<PageRef, ()> {
+        if let Some(idx) = pages.free_page() {
+            let mut map = self.map.lock().unwrap();
+            assert!(!map.contains_key(tag));
+
+            let page_weak_ref = PageWeakRef::for_page(pages, idx);
+            let page_ref = page_weak_ref.new_page_ref();
+            map.insert(*tag, page_weak_ref);
+
+            Ok(page_ref)
+        } else {
+            todo!("CLOCK SWEEP");
+        }
     }
 }

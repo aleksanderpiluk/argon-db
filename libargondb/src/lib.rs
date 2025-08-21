@@ -5,7 +5,9 @@ mod io;
 mod op_engine;
 mod query_parser;
 mod runtime;
+mod schema;
 mod storage;
+mod table;
 
 use anyhow::{Context, Ok, Result, anyhow};
 

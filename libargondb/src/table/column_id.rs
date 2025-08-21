@@ -1,0 +1,1 @@
+struct ColumnId(u16);

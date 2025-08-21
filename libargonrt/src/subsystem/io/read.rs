@@ -4,8 +4,6 @@ use crossbeam::queue::ArrayQueue;
 use io_uring::{IoUring, opcode, types};
 use slab::Slab;
 
-use crate::subsystem::io::block_cache::page::Page;
-
 static read_queue: ArrayQueue<ReadRequest> = ArrayQueue::new(32);
 static read_slab: Slab<ReadRequest> = Slab::new();
 
@@ -47,6 +45,7 @@ fn read_init() {
     });
 }
 
+#[derive(Debug)]
 struct ReadRequest {
     page: Page,
 }
