@@ -7,8 +7,6 @@ use log4rs::{
 };
 use wal::WalCtx;
 
-mod config;
-mod core;
 mod db;
 mod execution;
 mod utils;

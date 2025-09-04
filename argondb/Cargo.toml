@@ -1,0 +1,7 @@
+[package]
+name = "argondb"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libargonrt = { path = "../libargonrt" }

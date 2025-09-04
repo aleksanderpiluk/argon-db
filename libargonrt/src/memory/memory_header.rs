@@ -1,3 +1,0 @@
-struct MemoryHeader {}
-
-impl MemoryHeader {}

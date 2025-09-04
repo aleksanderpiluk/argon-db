@@ -1,13 +1,12 @@
+mod block_cache;
 mod catalog;
 mod core;
 mod global_state;
 mod io;
-mod op_engine;
 mod query_parser;
-mod runtime;
-mod schema;
 mod storage;
 mod table;
+mod wal;
 
 use anyhow::{Context, Ok, Result, anyhow};
 

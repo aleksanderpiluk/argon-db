@@ -1,3 +1,0 @@
-struct KeySchema;
-
-impl KeySchema {}
