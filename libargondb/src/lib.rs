@@ -1,7 +1,5 @@
 mod block_cache;
 mod catalog;
-mod core;
-mod global_state;
 mod io;
 mod query_parser;
 mod storage;

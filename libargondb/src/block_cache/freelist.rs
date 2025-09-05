@@ -8,6 +8,7 @@ use std::{
 
 use crate::block_cache::{
     block_buffer::{BlockBuffer, BlockExclusiveGuard, BlockHeader},
+    block_lock::TryExclusiveLockError,
     block_map::BlockMap,
 };
 
@@ -19,6 +20,13 @@ pub struct Freelist {
 }
 
 impl Freelist {
+    pub fn new(block_buffer: &BlockBuffer) -> Self {
+        Self {
+            next_free: Mutex::new(block_buffer.get_header(0)),
+            clock_sweep_next_victim: AtomicUsize::new(0),
+        }
+    }
+
     /**
      * Pops block from freelist if any available or runs clock-sweep to free mapped block
      */
@@ -72,11 +80,16 @@ impl Freelist {
             assert!(block.is_loaded());
             assert_eq!(block.next_free(), None);
             assert!(block.tag().is_some());
-            // TODO: asserts that it's not used and all
+            assert_eq!(block.usage_count(), 0);
 
-            let block = map.free_assigned_block(block);
-
-            return block;
+            match map.try_free_assigned_block(block) {
+                Ok(block) => return block,
+                Err(block) => {
+                    // Block is needed so we should chose other one
+                    drop(block);
+                    continue;
+                }
+            };
         }
     }
 
@@ -91,15 +104,42 @@ impl Freelist {
                 victim_idx + 1,
                 bounded_idx + 1,
                 Ordering::Release,
-                Ordering::Release,
+                Ordering::Relaxed,
             );
 
             victim_idx = bounded_idx;
         }
 
         let victim_header = buffer.get_header(victim_idx).unwrap();
-        let block = unsafe { BlockExclusiveGuard::acquire_for(victim_header) }; // Any changes while waiting for lock are irrelevant
 
-        todo!("block check and other stuff");
+        let mut guard: Option<BlockExclusiveGuard> = None;
+        loop {
+            match unsafe { BlockExclusiveGuard::try_acquire_for(victim_header) } {
+                Ok(block) => {
+                    guard = Some(block);
+                    break;
+                }
+                Err(err) => match err {
+                    TryExclusiveLockError::StateChanged => {
+                        continue;
+                    }
+                    _ => {
+                        break;
+                    }
+                },
+            }
+        }
+
+        if let Some(mut block) = guard {
+            if block.is_loaded() {
+                let usage_count = block.usage_count_take();
+
+                if usage_count == 0 { Some(block) } else { None }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
