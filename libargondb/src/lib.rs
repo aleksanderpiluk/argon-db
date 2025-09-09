@@ -1,6 +1,8 @@
 mod block_cache;
 mod catalog;
-mod io;
+mod db_state;
+mod memtable;
+mod mutation_executor;
 mod query_parser;
 mod storage;
 mod table;

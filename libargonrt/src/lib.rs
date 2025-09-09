@@ -1,5 +1,6 @@
 mod base;
 mod cee;
+mod clock;
 mod limits;
 pub mod modules;
 pub mod runtime;

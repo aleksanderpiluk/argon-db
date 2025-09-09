@@ -1,3 +1,5 @@
+mod read;
+
 use crate::base::{
     module::{Module, ModuleName},
     storage::StorageModule,

@@ -1,9 +1,5 @@
-mod column_flags;
-mod column_id;
-mod key;
+mod mutation;
 mod partition_key;
-mod row;
-mod row_column;
-mod row_columns_group;
+mod row_flags;
 mod timestamp;
 mod value;
