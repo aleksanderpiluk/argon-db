@@ -1,8 +1,12 @@
-mod column_type;
+pub mod column_type;
+mod error;
 mod flusher;
-mod memtable;
-mod mutation;
-mod primary_key;
-mod scan;
+pub mod memtable;
+mod memtable_factory;
+pub mod mutation;
+pub mod primary_key;
+pub mod scan;
+pub mod schema;
 mod sstable;
-mod table;
+pub mod table;
+pub mod table_state;

@@ -1,30 +1,45 @@
 use crate::kv::{
+    error::KVRuntimeError,
     mutation::{Mutation, MutationComparator, MutationUtils, StructuredMutation},
     primary_key::PrimaryKeySchema,
-    scan::{RangeScanParams, ScanResultIter, Scannable},
+    scan::{PrimaryKeyMarker, RangeScanParams, ScanResultIter, Scannable},
 };
-use crossbeam_skiplist::SkipSet;
+use crossbeam_skiplist::{SkipSet, set::Entry};
 use std::{
-    ops::Range,
+    ops::{Deref, Range, RangeBounds},
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
     },
 };
 
+#[derive(Debug)]
 pub struct Memtable {
     primary_key_schema: Arc<PrimaryKeySchema>,
     inner: SkipSet<MemtableMutation>,
     size_limit: usize,
     size: AtomicUsize,
-    state: MemtableState,
+    lock: MemtableLock,
 }
 
 impl Memtable {
-    pub fn insert_mutation(&self, mutation: StructuredMutation) -> Result<(), MemtableInsertError> {
-        assert!(!MutationUtils::is_marker(&mutation));
+    pub fn new(primary_key_schema: Arc<PrimaryKeySchema>, size_limit: usize) -> Self {
+        Self {
+            primary_key_schema,
+            inner: SkipSet::new(),
+            size_limit,
+            size: AtomicUsize::new(0),
+            lock: MemtableLock::new(),
+        }
+    }
 
-        self.state
+    pub fn insert_mutation(
+        &self,
+        mutation: &StructuredMutation,
+    ) -> Result<(), MemtableInsertError> {
+        assert!(!MutationUtils::is_marker(mutation));
+
+        self.lock
             .try_write_access()
             .map_err(|_| MemtableInsertError::ReadOnlyMode)?;
 
@@ -35,7 +50,8 @@ impl Memtable {
             let new_memtable_size = memtable_size + mutation_size;
 
             if new_memtable_size > self.size_limit {
-                self.state.release_write_access();
+                self.lock.enable_read_only_mode();
+                self.lock.release_write_access();
                 return Err(MemtableInsertError::SizeExceeded);
             }
 
@@ -47,24 +63,61 @@ impl Memtable {
             ) {
                 self.inner.insert(MemtableMutation {
                     primary_key_schema: self.primary_key_schema.clone(),
-                    mutation,
+                    mutation: mutation.clone(),
                 });
 
-                self.state.release_write_access();
+                self.lock.release_write_access();
                 return Ok(());
             }
+        }
+    }
+
+    pub fn is_read_only(&self) -> bool {
+        todo!()
+    }
+
+    fn get_range_iterator<'a>(
+        &'a self,
+        scan: &RangeScanParams,
+    ) -> Result<Box<dyn Iterator<Item = Entry<'a, MemtableMutation>> + 'a>, KVRuntimeError> {
+        let from = scan.from();
+        let to = scan.to();
+
+        match (from, to) {
+            (PrimaryKeyMarker::Start, PrimaryKeyMarker::End) => {
+                Ok(Box::new(self.inner.range(..).into_iter()))
+            }
+            (PrimaryKeyMarker::Start, PrimaryKeyMarker::Key(pk)) => Ok(Box::new(
+                self.inner
+                    .range(..MemtableMutation::end(self.primary_key_schema.clone(), pk.clone()))
+                    .into_iter(),
+            )),
+            (PrimaryKeyMarker::Key(pk), PrimaryKeyMarker::End) => Ok(Box::new(
+                self.inner
+                    .range(MemtableMutation::start(self.primary_key_schema.clone(), pk.clone())..)
+                    .into_iter(),
+            )),
+            (PrimaryKeyMarker::Key(pk_from), PrimaryKeyMarker::Key(pk_to)) => Ok(Box::new(
+                self.inner
+                    .range(
+                        MemtableMutation::start(self.primary_key_schema.clone(), pk_from.clone())
+                            ..MemtableMutation::end(self.primary_key_schema.clone(), pk_to.clone()),
+                    )
+                    .into_iter(),
+            )),
+            _ => return Err(KVRuntimeError::DataMalformed),
         }
     }
 }
 
 impl Scannable for Memtable {
-    fn range_scan(&self, scan: RangeScanParams) -> impl ScanResultIter {
-        let from = MemtableMutation::start(self.primary_key_schema.clone(), Box::from(scan.from()));
-        let to = MemtableMutation::end(self.primary_key_schema.clone(), Box::from(scan.to()));
+    fn range_scan(
+        &self,
+        scan: &RangeScanParams,
+    ) -> Result<Box<dyn ScanResultIter + '_>, KVRuntimeError> {
+        let range = self.get_range_iterator(scan)?;
 
-        let range = self.inner.range(from..to);
-
-        MemtableScanResultsIter::new(range)
+        Ok(Box::new(MemtableScanResultsIter::new(range)))
     }
 
     fn set_scan(&self, scan: super::scan::SetScanParams) -> MemtableScanResultsIter {
@@ -72,15 +125,20 @@ impl Scannable for Memtable {
     }
 }
 
-enum MemtableInsertError {
+pub enum MemtableInsertError {
     ReadOnlyMode,
     SizeExceeded,
 }
 
-struct MemtableState(AtomicUsize);
+#[derive(Debug)]
+struct MemtableLock(AtomicUsize);
 
-impl MemtableState {
+impl MemtableLock {
     const READ_ONLY_FLAG: usize = 1 << 63;
+
+    fn new() -> Self {
+        Self(AtomicUsize::new(0))
+    }
 
     fn enable_read_only_mode(&self) {
         self.0.fetch_xor(Self::READ_ONLY_FLAG, Ordering::AcqRel);
@@ -112,6 +170,7 @@ impl MemtableState {
     }
 }
 
+#[derive(Debug)]
 struct MemtableMutation {
     primary_key_schema: Arc<PrimaryKeySchema>,
     mutation: StructuredMutation,
@@ -142,7 +201,7 @@ impl PartialEq for MemtableMutation {
             &other.primary_key_schema
         ));
 
-        MutationComparator::eq(&self.primary_key_schema, &self.mutation, &other.mutation)
+        MutationComparator::eq(&self.primary_key_schema, &self.mutation, &other.mutation).unwrap()
     }
 }
 
@@ -153,7 +212,7 @@ impl Ord for MemtableMutation {
             &other.primary_key_schema
         ));
 
-        MutationComparator::cmp(&self.primary_key_schema, &self.mutation, &other.mutation)
+        MutationComparator::cmp(&self.primary_key_schema, &self.mutation, &other.mutation).unwrap()
     }
 }
 
@@ -163,8 +222,7 @@ impl PartialOrd for MemtableMutation {
     }
 }
 
-type MemtableScanResultsIterInner<'a> =
-    crossbeam_skiplist::set::Range<'a, MemtableMutation, Range<MemtableMutation>, MemtableMutation>;
+type MemtableScanResultsIterInner<'a> = Box<dyn Iterator<Item = Entry<'a, MemtableMutation>> + 'a>;
 struct MemtableScanResultsIter<'a> {
     iter: MemtableScanResultsIterInner<'a>,
     current_mutation: Option<StructuredMutation>,
@@ -181,7 +239,11 @@ impl<'a> MemtableScanResultsIter<'a> {
     fn iter_next_mutation(
         iter: &mut MemtableScanResultsIterInner<'a>,
     ) -> Option<StructuredMutation> {
-        todo!()
+        if let Some(entry) = iter.next() {
+            Some(StructuredMutation::from_mutation(&entry.mutation))
+        } else {
+            None
+        }
     }
 }
 

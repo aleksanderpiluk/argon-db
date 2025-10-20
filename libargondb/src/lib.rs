@@ -1,9 +1,9 @@
 mod block_cache;
 mod catalog;
 mod data_types;
-mod kv;
+pub mod kv;
 mod module;
-mod ops;
-mod state;
+pub mod ops;
 mod storage;
+mod utils;
 mod wal;

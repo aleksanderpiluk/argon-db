@@ -2,7 +2,10 @@ use std::{cmp::Ordering, io::Write};
 
 use bytemuck::{CheckedBitPattern, NoUninit, bytes_of, checked, from_bytes};
 
-use crate::kv::primary_key::{PrimaryKeyComparator, PrimaryKeySchema};
+use crate::kv::{
+    error::KVRuntimeError,
+    primary_key::{PrimaryKeyComparator, PrimaryKeySchema},
+};
 
 pub trait Mutation {
     fn timestamp(&self) -> &u64;
@@ -20,7 +23,7 @@ pub trait Mutation {
     fn value(&self) -> &[u8];
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Ord, NoUninit, CheckedBitPattern)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, NoUninit, CheckedBitPattern)]
 #[repr(u8)]
 pub enum MutationType {
     Start = 1,
@@ -42,8 +45,8 @@ impl MutationType {
 impl PartialOrd for MutationType {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self.clone() as u8).cmp(&(other.clone() as u8)) {
-            Ordering::Equal => Some(Ordering::Equal),
             Ordering::Greater => Some(Ordering::Less),
+            Ordering::Equal => Some(Ordering::Equal),
             Ordering::Less => Some(Ordering::Greater),
         }
     }
@@ -62,38 +65,41 @@ impl MutationComparator {
         schema: &PrimaryKeySchema,
         this: &T,
         that: &U,
-    ) -> Ordering {
-        match PrimaryKeyComparator::cmp(schema, this.primary_key(), that.primary_key()) {
+    ) -> Result<Ordering, KVRuntimeError> {
+        match PrimaryKeyComparator::cmp(schema, this.primary_key(), that.primary_key())? {
             Ordering::Equal => {}
-            ord => return ord,
+            ord => return Ok(ord),
         }
 
         match this.timestamp().cmp(that.timestamp()) {
             Ordering::Equal => {}
-            Ordering::Greater => return Ordering::Less,
-            Ordering::Less => return Ordering::Greater,
+            Ordering::Greater => return Ok(Ordering::Less),
+            Ordering::Less => return Ok(Ordering::Greater),
         };
 
         match this.column_id().cmp(that.column_id()) {
             Ordering::Equal => {}
-            ord => return ord,
+            ord => return Ok(ord),
         };
 
-        this.mutation_type().cmp(that.mutation_type())
+        Ok(this.mutation_type().cmp(that.mutation_type()))
     }
 
     pub fn eq<T: Mutation + ?Sized, U: Mutation + ?Sized>(
         schema: &PrimaryKeySchema,
         this: &T,
         that: &U,
-    ) -> bool {
-        PrimaryKeyComparator::eq(schema, this.primary_key(), that.primary_key())
-            && this.timestamp().eq(that.timestamp())
-            && this.column_id().eq(that.column_id())
-            && this.mutation_type().eq(that.mutation_type())
+    ) -> Result<bool, KVRuntimeError> {
+        Ok(
+            PrimaryKeyComparator::eq(schema, this.primary_key(), that.primary_key())?
+                && this.timestamp().eq(that.timestamp())
+                && this.column_id().eq(that.column_id())
+                && this.mutation_type().eq(that.mutation_type()),
+        )
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct StructuredMutation {
     timestamp: u64,
     column_id: u16,
@@ -127,6 +133,16 @@ impl StructuredMutation {
         })
     }
 
+    pub fn from_mutation<T: Mutation + ?Sized>(mutation: &T) -> Self {
+        Self {
+            timestamp: *mutation.timestamp(),
+            column_id: *mutation.column_id(),
+            mutation_type: *mutation.mutation_type(),
+            primary_key: mutation.primary_key().to_vec().into_boxed_slice(),
+            value: mutation.value().to_vec().into_boxed_slice(),
+        }
+    }
+
     pub fn start(primary_key: Box<[u8]>) -> Result<Self, MutationError> {
         Self::try_from(0, 0, MutationType::Start, primary_key, Box::new([]))
     }
@@ -136,7 +152,9 @@ impl StructuredMutation {
     }
 
     pub fn size(&self) -> usize {
-        todo!()
+        const CONSTANT_SIZE: usize = 8 + 2 + 1;
+
+        CONSTANT_SIZE + self.primary_key.len() + self.value.len()
     }
 }
 

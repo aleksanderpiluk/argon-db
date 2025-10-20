@@ -18,11 +18,12 @@ impl Flusher {
     pub fn run(self) {
         let mut sstable_builder: SSTableBuilder;
 
-        let params: RangeScanParams;
-        let mut iter = self.memtable.range_scan(params); // TODO: Full table scan
+        todo!()
+        // let params: RangeScanParams;
+        // let mut iter = self.memtable.range_scan(params); // TODO: Full table scan
 
-        while let Some(mutation) = iter.next_mutation() {
-            sstable_builder.write_mutation(mutation);
-        }
+        // while let Some(mutation) = iter.next_mutation() {
+        //     sstable_builder.write_mutation(mutation);
+        // }
     }
 }

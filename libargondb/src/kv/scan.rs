@@ -1,31 +1,88 @@
-use crate::kv::{mutation::Mutation, primary_key::PrimaryKeySchema};
+use std::cmp::Ordering;
+
+use crate::kv::{
+    error::KVRuntimeError,
+    memtable,
+    mutation::{Mutation, StructuredMutation},
+    primary_key::{PrimaryKeyComparator, PrimaryKeySchema},
+    table_state::KVTableState,
+};
+
+pub enum PrimaryKeyMarker {
+    Start,
+    End,
+    Key(Box<[u8]>),
+}
+
+struct PrimaryKeyMarkerComparator;
+
+impl PrimaryKeyMarkerComparator {
+    pub fn cmp(
+        schema: &PrimaryKeySchema,
+        this: &PrimaryKeyMarker,
+        that: &PrimaryKeyMarker,
+    ) -> Result<Ordering, KVRuntimeError> {
+        if let PrimaryKeyMarker::Start = this {
+            if let PrimaryKeyMarker::Start = that {
+                return Ok(Ordering::Equal);
+            } else {
+                return Ok(Ordering::Less);
+            }
+        }
+
+        if let PrimaryKeyMarker::End = this {
+            if let PrimaryKeyMarker::End = that {
+                return Ok(Ordering::Equal);
+            } else {
+                return Ok(Ordering::Greater);
+            }
+        }
+
+        if let PrimaryKeyMarker::Key(this_key) = this {
+            return match that {
+                PrimaryKeyMarker::Key(that_key) => {
+                    PrimaryKeyComparator::cmp(schema, &this_key, &that_key)
+                }
+                PrimaryKeyMarker::Start => Ok(Ordering::Greater),
+                PrimaryKeyMarker::End => Ok(Ordering::Less),
+            };
+        }
+
+        panic!("PrimaryKeyMarkerComparator fatal error");
+    }
+}
 
 pub trait Scannable {
-    fn range_scan(&self, scan: RangeScanParams) -> impl ScanResultIter;
+    fn range_scan(
+        &self,
+        scan: &RangeScanParams,
+    ) -> Result<Box<dyn ScanResultIter + '_>, KVRuntimeError>;
     fn set_scan(&self, scan: SetScanParams) -> impl ScanResultIter;
 }
 
+trait ScanParams {}
+
 pub struct RangeScanParams {
-    from: Box<[u8]>,
-    to: Box<[u8]>,
+    from: PrimaryKeyMarker,
+    to: PrimaryKeyMarker,
     columns: ColumnFilter,
 }
 
 impl RangeScanParams {
-    pub fn new(from: Box<[u8]>, to: Box<[u8]>, columns: ColumnFilter) -> Self {
-        assert!(from <= to);
-
+    pub fn new(from: PrimaryKeyMarker, to: PrimaryKeyMarker, columns: ColumnFilter) -> Self {
         Self { from, to, columns }
     }
 
-    pub fn from(&self) -> &[u8] {
+    pub fn from(&self) -> &PrimaryKeyMarker {
         &self.from
     }
 
-    pub fn to(&self) -> &[u8] {
+    pub fn to(&self) -> &PrimaryKeyMarker {
         &self.to
     }
 }
+
+impl ScanParams for RangeScanParams {}
 
 pub struct SetScanParams {
     rows: Box<[Box<[u8]>]>,
@@ -51,19 +108,26 @@ pub trait ScanResultIter {
 
 pub struct ScanResultItersMerge<'a> {
     primary_key_schema: &'a PrimaryKeySchema,
-    heap: Box<[Box<dyn ScanResultIter>]>,
+    // heap: Box<[Box<dyn ScanResultIter>]>,
 }
 
 impl<'a> ScanResultItersMerge<'a> {
     pub fn new(
         primary_key_schema: &'a PrimaryKeySchema,
-        iters: Vec<Box<dyn ScanResultIter>>,
+        iters: Vec<Box<dyn ScanResultIter + 'a>>,
     ) -> Self {
-        let heap = iters.into_boxed_slice();
+        // let heap = iters.into_boxed_slice();
+
+        println!("Scan results");
+        for mut iter in iters {
+            while let Some(mutation) = iter.next_mutation() {
+                println!("{:#?}", StructuredMutation::from_mutation(mutation));
+            }
+        }
 
         Self {
             primary_key_schema,
-            heap,
+            // heap,
         }
     }
 
@@ -74,6 +138,28 @@ impl<'a> ScanResultItersMerge<'a> {
 
 impl ScanResultIter for ScanResultItersMerge<'_> {
     fn next_mutation(&mut self) -> Option<&dyn Mutation> {
+        todo!()
+    }
+}
+
+pub struct ScanExecutor;
+
+impl ScanExecutor {
+    // pub fn execute(table: &KVTableState, scan: impl ScanParams) {
+    pub fn execute(table: &KVTableState, scan: RangeScanParams) -> Result<(), KVRuntimeError> {
+        let mut result_iters = vec![];
+
+        result_iters.push(table.current_memtable.range_scan(&scan)?);
+
+        for memtable in &table.read_memtables {
+            result_iters.push(memtable.range_scan(&scan)?);
+        }
+
+        // TODO: SStables
+
+        let pk_schema = PrimaryKeySchema::from_columns_schema(&table.columns_schema);
+        ScanResultItersMerge::new(&pk_schema, result_iters);
+
         todo!()
     }
 }
