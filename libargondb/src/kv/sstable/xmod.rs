@@ -1,11 +1,12 @@
+mod compression;
+mod descriptor;
 mod index;
 mod sstable_builder;
-mod sstable_info;
 
+use descriptor::SSTableDescriptor;
 pub use sstable_builder::SSTableBuilder;
-use sstable_info::SSTableInfo;
 
 struct SSTable {
     id: u64,
-    info: SSTableInfo,
+    info: SSTableDescriptor,
 }

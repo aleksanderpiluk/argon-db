@@ -2,7 +2,8 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use crate::kv::{
     column_type::ColumnTypeCode,
-    schema::{KVColumnSchema, KVColumnsSchema},
+    config::KVConfig,
+    schema::{KVColumnSchema, KVTableSchema},
     table::KVTable,
 };
 
@@ -56,13 +57,15 @@ impl CreateTableOp {
             primary_key.push(*column_id);
         }
 
-        let columns_schema = KVColumnsSchema {
+        let columns_schema = KVTableSchema {
             columns,
             column_name_map,
             primary_key,
         };
 
-        Ok(Arc::new(KVTable::create(columns_schema)))
+        let config = KVConfig::default();
+
+        Ok(Arc::new(KVTable::create(config, columns_schema)))
     }
 }
 

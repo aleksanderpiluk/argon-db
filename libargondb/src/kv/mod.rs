@@ -1,8 +1,9 @@
 pub mod column_type;
+pub mod config;
 mod error;
+mod factory;
 mod flusher;
 pub mod memtable;
-mod memtable_factory;
 pub mod mutation;
 pub mod primary_key;
 pub mod scan;

@@ -1,74 +1,49 @@
-use std::cmp::Ordering;
+use std::vec;
+
+use async_trait::async_trait;
 
 use crate::kv::{
     error::KVRuntimeError,
-    memtable,
-    mutation::{Mutation, StructuredMutation},
-    primary_key::{PrimaryKeyComparator, PrimaryKeySchema},
+    mutation::{Mutation, MutationComparator},
+    primary_key::{KVPrimaryKeySchema, PrimaryKeyMarker},
     table_state::KVTableState,
 };
 
-pub enum PrimaryKeyMarker {
-    Start,
-    End,
-    Key(Box<[u8]>),
-}
-
-struct PrimaryKeyMarkerComparator;
-
-impl PrimaryKeyMarkerComparator {
-    pub fn cmp(
-        schema: &PrimaryKeySchema,
-        this: &PrimaryKeyMarker,
-        that: &PrimaryKeyMarker,
-    ) -> Result<Ordering, KVRuntimeError> {
-        if let PrimaryKeyMarker::Start = this {
-            if let PrimaryKeyMarker::Start = that {
-                return Ok(Ordering::Equal);
-            } else {
-                return Ok(Ordering::Less);
-            }
-        }
-
-        if let PrimaryKeyMarker::End = this {
-            if let PrimaryKeyMarker::End = that {
-                return Ok(Ordering::Equal);
-            } else {
-                return Ok(Ordering::Greater);
-            }
-        }
-
-        if let PrimaryKeyMarker::Key(this_key) = this {
-            return match that {
-                PrimaryKeyMarker::Key(that_key) => {
-                    PrimaryKeyComparator::cmp(schema, &this_key, &that_key)
-                }
-                PrimaryKeyMarker::Start => Ok(Ordering::Greater),
-                PrimaryKeyMarker::End => Ok(Ordering::Less),
-            };
-        }
-
-        panic!("PrimaryKeyMarkerComparator fatal error");
-    }
-}
-
-pub trait Scannable {
-    fn range_scan(
+pub trait KVScanOp {
+    fn scan<'a, T: KVScannable + ?Sized>(
         &self,
-        scan: &RangeScanParams,
-    ) -> Result<Box<dyn ScanResultIter + '_>, KVRuntimeError>;
-    fn set_scan(&self, scan: SetScanParams) -> impl ScanResultIter;
+        scannable: &'a T,
+    ) -> Result<Box<dyn KVScanIterator + Send + Sync>, KVRuntimeError>;
 }
 
-trait ScanParams {}
+#[async_trait]
+pub trait KVScannable {
+    async fn range_scan(
+        &self,
+        scan: &KVRangeScan,
+    ) -> Result<Box<dyn KVScanIterator>, KVRuntimeError>;
+    // fn set_scan(&self, scan: SetScanParams) -> impl ScanResultIter;
+}
 
-pub struct RangeScanParams {
+#[async_trait]
+pub trait KVScanIterator {
+    async fn next_mutation(&mut self) -> Option<Box<dyn KVScanIteratorItem + Send + Sync>>;
+    fn peek_mutation(&self) -> Option<&Box<dyn KVScanIteratorItem + Send + Sync>>;
+}
+
+pub trait KVScanIteratorItem {
+    fn primary_key(&self) -> &[u8];
+
+    fn mutation(&self) -> &dyn Mutation;
+}
+
+pub struct KVRangeScan {
     from: PrimaryKeyMarker,
     to: PrimaryKeyMarker,
     columns: ColumnFilter,
 }
 
-impl RangeScanParams {
+impl KVRangeScan {
     pub fn new(from: PrimaryKeyMarker, to: PrimaryKeyMarker, columns: ColumnFilter) -> Self {
         Self { from, to, columns }
     }
@@ -82,18 +57,12 @@ impl RangeScanParams {
     }
 }
 
-impl ScanParams for RangeScanParams {}
-
-pub struct SetScanParams {
-    rows: Box<[Box<[u8]>]>,
-    columns: ColumnFilter,
-}
-
-impl SetScanParams {
-    pub fn new(rows: Box<[Box<[u8]>]>, columns: ColumnFilter) -> Self {
-        assert!(rows.is_sorted()); //TODO: 
-
-        Self { rows, columns }
+impl KVScanOp for KVRangeScan {
+    fn scan<'a, T: KVScannable + ?Sized>(
+        &self,
+        scannable: &'a T,
+    ) -> Result<Box<dyn KVScanIterator + Send + Sync>, KVRuntimeError> {
+        todo!()
     }
 }
 
@@ -101,144 +70,81 @@ pub enum ColumnFilter {
     All,
 }
 
-pub trait ScanResultIter {
-    fn next_mutation(&mut self) -> Option<&dyn Mutation>;
-    // fn peek_mutation(&self) -> Option<&dyn Mutation>;
-}
-
-pub struct ScanResultItersMerge<'a> {
-    primary_key_schema: &'a PrimaryKeySchema,
-    // heap: Box<[Box<dyn ScanResultIter>]>,
-}
-
-impl<'a> ScanResultItersMerge<'a> {
-    pub fn new(
-        primary_key_schema: &'a PrimaryKeySchema,
-        iters: Vec<Box<dyn ScanResultIter + 'a>>,
-    ) -> Self {
-        // let heap = iters.into_boxed_slice();
-
-        println!("Scan results");
-        for mut iter in iters {
-            while let Some(mutation) = iter.next_mutation() {
-                println!("{:#?}", StructuredMutation::from_mutation(mutation));
-            }
-        }
-
-        Self {
-            primary_key_schema,
-            // heap,
-        }
-    }
-
-    fn heapify(heap: &mut Box<[Box<dyn ScanResultIter>]>) {
-        todo!()
-    }
-}
-
-impl ScanResultIter for ScanResultItersMerge<'_> {
-    fn next_mutation(&mut self) -> Option<&dyn Mutation> {
-        todo!()
-    }
-}
-
 pub struct ScanExecutor;
 
 impl ScanExecutor {
-    // pub fn execute(table: &KVTableState, scan: impl ScanParams) {
-    pub fn execute(table: &KVTableState, scan: RangeScanParams) -> Result<(), KVRuntimeError> {
-        let mut result_iters = vec![];
+    pub fn execute(
+        table: &KVTableState,
+        scan_op: impl KVScanOp,
+    ) -> Result<ScanResultProducer, KVRuntimeError> {
+        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&table.columns_schema);
+        let mut result_producer = ScanResultProducer::new(pk_schema);
 
-        result_iters.push(table.current_memtable.range_scan(&scan)?);
+        for scannable in table.list_scannable() {
+            // TODO: Scannable check preconditions (bloom filters etc.)
 
-        for memtable in &table.read_memtables {
-            result_iters.push(memtable.range_scan(&scan)?);
+            let scan_result = scan_op.scan(scannable)?;
+            result_producer.add_iter(scan_result);
         }
 
-        // TODO: SStables
+        // let pk_schema = KVPrimaryKeySchema::from_columns_schema(&table.columns_schema);
+        // ScanResultItersMerge::new(&pk_schema, result_iters);
 
-        let pk_schema = PrimaryKeySchema::from_columns_schema(&table.columns_schema);
-        ScanResultItersMerge::new(&pk_schema, result_iters);
+        Ok(result_producer)
+    }
+}
 
+pub struct ScanResultProducer {
+    schema: KVPrimaryKeySchema,
+    heap: Vec<Box<dyn KVScanIterator + Send + Sync>>,
+}
+
+impl ScanResultProducer {
+    fn new(schema: KVPrimaryKeySchema) -> Self {
+        Self {
+            schema,
+            heap: vec![],
+        }
+    }
+
+    fn add_iter(&mut self, iter: Box<dyn KVScanIterator + Send + Sync>) {
+        self.heap.push(iter);
+        self.heapify();
+    }
+
+    fn heapify(&mut self) {
+        self.heap.sort_by(|a, b| {
+            // TODO: REPLACE THIS
+            MutationComparator::cmp(
+                &self.schema,
+                a.peek_mutation().unwrap().mutation(),
+                b.peek_mutation().unwrap().mutation(),
+            )
+            .unwrap()
+        });
         todo!()
     }
 }
 
-// impl PartialEq for ScanResultItersMergeHeapItem<'_> {
-//     fn eq(&self, other: &Self) -> bool {
-//         match (self.iter.peek_mutation(), other.iter.peek_mutation()) {
-//             (None, None) => true,
-//             (Some(this), Some(that)) => MutationComparator::eq(self.primary_key_schema, this, that),
-//             _ => false,
-//         }
-//     }
+#[async_trait]
+impl KVScanIterator for ScanResultProducer {
+    async fn next_mutation(&mut self) -> Option<Box<dyn KVScanIteratorItem + Send + Sync>> {
+        todo!()
+    }
+    fn peek_mutation(&self) -> Option<&Box<dyn KVScanIteratorItem + Send + Sync>> {
+        todo!()
+    }
+}
+
+// pub struct SetScanParams {
+//     rows: Box<[Box<[u8]>]>,
+//     columns: ColumnFilter,
 // }
 
-// impl Eq for ScanResultItersMergeHeapItem<'_> {}
+// impl SetScanParams {
+//     pub fn new(rows: Box<[Box<[u8]>]>, columns: ColumnFilter) -> Self {
+//         assert!(rows.is_sorted()); //TODO:
 
-// impl PartialOrd for ScanResultItersMergeHeapItem<'_> {
-//     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-//         Some(self.cmp(other))
-//     }
-// }
-
-// impl Ord for ScanResultItersMergeHeapItem<'_> {
-//     fn cmp(&self, other: &Self) -> Ordering {
-//         match (self.iter.peek_mutation(), other.iter.peek_mutation()) {
-//             (None, None) => Ordering::Equal,
-//             (Some(_), None) => Ordering::Greater,
-//             (None, Some(_)) => Ordering::Less,
-//             (Some(this), Some(that)) => {
-//                 MutationComparator::cmp(self.primary_key_schema, this, that)
-//             }
-//         }
-//     }
-// }
-
-// struct ScanResult(Box<[u8]>);
-
-// impl ScanResult {
-//     pub fn iter(&self) -> ScanResultIterator<'_> {
-//         ScanResultIterator {
-//             data: &self,
-//             ptr: 0,
-//         }
-//     }
-// }
-
-// struct ScanResultIterator<'a> {
-//     data: &'a ScanResult,
-//     ptr: usize,
-// }
-
-// impl<'a> Iterator for ScanResultIterator<'a> {
-//     type Item = InMemoryMutationView<'a>;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         if self.ptr < self.data.0.len() {
-//             let item = InMemoryMutationView::try_from(&self.data.0[self.ptr..]).unwrap();
-//             self.ptr += item.len();
-
-//             Some(item)
-//         } else {
-//             None
-//         }
-//     }
-// }
-
-// pub struct ScanResultBuilder(Vec<u8>);
-
-// impl ScanResultBuilder {
-//     pub fn new() -> Self {
-//         Self(Vec::new())
-//     }
-
-//     pub fn write(&mut self, mutation: impl Mutation) {
-//         // TODO: Assert mutations are put in order
-//         InMemoryMutationView::write(&mut self.0, mutation);
-//     }
-
-//     pub fn build(self) -> ScanResult {
-//         ScanResult(self.0.into_boxed_slice())
+//         Self { rows, columns }
 //     }
 // }

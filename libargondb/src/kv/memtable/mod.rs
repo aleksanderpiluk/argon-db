@@ -1,12 +1,15 @@
+mod lock;
+
 use crate::kv::{
     error::KVRuntimeError,
+    memtable::lock::MemtableLock,
     mutation::{Mutation, MutationComparator, MutationUtils, StructuredMutation},
-    primary_key::PrimaryKeySchema,
-    scan::{PrimaryKeyMarker, RangeScanParams, ScanResultIter, Scannable},
+    primary_key::{KVPrimaryKeySchema, PrimaryKeyMarker},
+    scan::{KVRangeScan, KVScanIterator, KVScannable},
 };
 use crossbeam_skiplist::{SkipSet, set::Entry};
 use std::{
-    ops::{Deref, Range, RangeBounds},
+    ops::Deref,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -15,7 +18,7 @@ use std::{
 
 #[derive(Debug)]
 pub struct Memtable {
-    primary_key_schema: Arc<PrimaryKeySchema>,
+    primary_key_schema: Arc<KVPrimaryKeySchema>,
     inner: SkipSet<MemtableMutation>,
     size_limit: usize,
     size: AtomicUsize,
@@ -23,7 +26,7 @@ pub struct Memtable {
 }
 
 impl Memtable {
-    pub fn new(primary_key_schema: Arc<PrimaryKeySchema>, size_limit: usize) -> Self {
+    pub fn new(primary_key_schema: Arc<KVPrimaryKeySchema>, size_limit: usize) -> Self {
         Self {
             primary_key_schema,
             inner: SkipSet::new(),
@@ -33,6 +36,10 @@ impl Memtable {
         }
     }
 
+    pub fn as_scannable(&self) -> &dyn KVScannable {
+        self
+    }
+
     pub fn insert_mutation(
         &self,
         mutation: &StructuredMutation,
@@ -40,7 +47,7 @@ impl Memtable {
         assert!(!MutationUtils::is_marker(mutation));
 
         self.lock
-            .try_write_access()
+            .obtain_write_access()
             .map_err(|_| MemtableInsertError::ReadOnlyMode)?;
 
         let mutation_size = mutation.size();
@@ -78,7 +85,7 @@ impl Memtable {
 
     fn get_range_iterator<'a>(
         &'a self,
-        scan: &RangeScanParams,
+        scan: &KVRangeScan,
     ) -> Result<Box<dyn Iterator<Item = Entry<'a, MemtableMutation>> + 'a>, KVRuntimeError> {
         let from = scan.from();
         let to = scan.to();
@@ -110,17 +117,9 @@ impl Memtable {
     }
 }
 
-impl Scannable for Memtable {
-    fn range_scan(
-        &self,
-        scan: &RangeScanParams,
-    ) -> Result<Box<dyn ScanResultIter + '_>, KVRuntimeError> {
-        let range = self.get_range_iterator(scan)?;
-
-        Ok(Box::new(MemtableScanResultsIter::new(range)))
-    }
-
-    fn set_scan(&self, scan: super::scan::SetScanParams) -> MemtableScanResultsIter {
+impl KVScannable for Memtable {
+    fn range_scan(&self, scan: &KVRangeScan) -> Result<Box<dyn KVScanIterator>, KVRuntimeError> {
+        let iter = self.get_range_iterator(scan)?;
         todo!()
     }
 }
@@ -131,64 +130,28 @@ pub enum MemtableInsertError {
 }
 
 #[derive(Debug)]
-struct MemtableLock(AtomicUsize);
-
-impl MemtableLock {
-    const READ_ONLY_FLAG: usize = 1 << 63;
-
-    fn new() -> Self {
-        Self(AtomicUsize::new(0))
-    }
-
-    fn enable_read_only_mode(&self) {
-        self.0.fetch_xor(Self::READ_ONLY_FLAG, Ordering::AcqRel);
-    }
-
-    fn try_write_access(&self) -> Result<(), ()> {
-        loop {
-            let state = self.0.load(Ordering::Acquire);
-
-            let is_read_only = (state & Self::READ_ONLY_FLAG) > 0;
-            if is_read_only {
-                return Err(());
-            }
-
-            // TODO: Add debug assertions
-            let new_state = state + 1;
-
-            if let Ok(_) =
-                self.0
-                    .compare_exchange(state, new_state, Ordering::Release, Ordering::Relaxed)
-            {
-                return Ok(());
-            }
-        }
-    }
-
-    fn release_write_access(&self) {
-        self.0.fetch_sub(1, Ordering::AcqRel);
-    }
-}
-
-#[derive(Debug)]
 struct MemtableMutation {
-    primary_key_schema: Arc<PrimaryKeySchema>,
+    primary_key_schema: Arc<KVPrimaryKeySchema>,
     mutation: StructuredMutation,
 }
 
 impl MemtableMutation {
-    fn start(primary_key_schema: Arc<PrimaryKeySchema>, primary_key: Box<[u8]>) -> Self {
+    fn start(primary_key_schema: Arc<KVPrimaryKeySchema>, primary_key: Box<[u8]>) -> Self {
         Self {
             primary_key_schema,
             mutation: StructuredMutation::start(primary_key).unwrap(),
         }
     }
 
-    fn end(primary_key_schema: Arc<PrimaryKeySchema>, primary_key: Box<[u8]>) -> Self {
+    fn end(primary_key_schema: Arc<KVPrimaryKeySchema>, primary_key: Box<[u8]>) -> Self {
         Self {
             primary_key_schema,
             mutation: StructuredMutation::end(primary_key).unwrap(),
         }
+    }
+
+    fn as_mutation(&self) -> &dyn Mutation {
+        &self.mutation
     }
 }
 
@@ -222,45 +185,22 @@ impl PartialOrd for MemtableMutation {
     }
 }
 
-type MemtableScanResultsIterInner<'a> = Box<dyn Iterator<Item = Entry<'a, MemtableMutation>> + 'a>;
-struct MemtableScanResultsIter<'a> {
-    iter: MemtableScanResultsIterInner<'a>,
-    current_mutation: Option<StructuredMutation>,
-}
+// type MemtableScanResultsIterInner<'a> = Box<dyn Iterator<Item = Entry<'a, MemtableMutation>> + 'a>;
 
-impl<'a> MemtableScanResultsIter<'a> {
-    fn new(mut iter: MemtableScanResultsIterInner<'a>) -> Self {
-        Self {
-            iter,
-            current_mutation: None,
-        }
-    }
+// impl KVScanIterator for MemtableScanResultsIter<'_> {
+//     fn next_mutation(&mut self) -> Option<&dyn Mutation> {
+//         self.current_mutation = Self::iter_next_mutation(&mut self.iter);
 
-    fn iter_next_mutation(
-        iter: &mut MemtableScanResultsIterInner<'a>,
-    ) -> Option<StructuredMutation> {
-        if let Some(entry) = iter.next() {
-            Some(StructuredMutation::from_mutation(&entry.mutation))
-        } else {
-            None
-        }
-    }
-}
+//         match &self.current_mutation {
+//             Some(mutation) => Some(MutationUtils::as_dyn(mutation)),
+//             None => None,
+//         }
+//     }
 
-impl ScanResultIter for MemtableScanResultsIter<'_> {
-    fn next_mutation(&mut self) -> Option<&dyn Mutation> {
-        self.current_mutation = Self::iter_next_mutation(&mut self.iter);
-
-        match &self.current_mutation {
-            Some(mutation) => Some(MutationUtils::as_dyn(mutation)),
-            None => None,
-        }
-    }
-
-    // fn peek_mutation(&self) -> Option<&dyn Mutation> {
-    //     match &self.current_mutation {
-    //         Some(mutation) => Some(MutationUtils::as_dyn(mutation)),
-    //         None => None,
-    //     }
-    // }
-}
+//     // fn peek_mutation(&self) -> Option<&dyn Mutation> {
+//     //     match &self.current_mutation {
+//     //         Some(mutation) => Some(MutationUtils::as_dyn(mutation)),
+//     //         None => None,
+//     //     }
+//     // }
+// }

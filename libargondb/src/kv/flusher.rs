@@ -1,6 +1,6 @@
 use crate::kv::{
     memtable::Memtable,
-    scan::{RangeScanParams, ScanResultIter, Scannable},
+    scan::{KVRangeScan, KVScanIterator, KVScannable},
     sstable::SSTableBuilder,
 };
 

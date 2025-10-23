@@ -1,7 +1,7 @@
 use crate::kv::{
     memtable::MemtableInsertError,
     mutation::{MutationType, StructuredMutation},
-    primary_key::{PrimaryKeyBuilder, PrimaryKeySchema},
+    primary_key::{PrimaryKeyBuilder, KVPrimaryKeySchema},
     table::KVTable,
     table_state::KVTableState,
 };
@@ -53,7 +53,7 @@ impl InsertOp {
 
         prepared_values.sort_by(|a, b| a.column_id.cmp(&b.column_id));
 
-        let pk_schema = PrimaryKeySchema::from_columns_schema(&table.columns_schema);
+        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&table.columns_schema);
         let mut pk_builder = PrimaryKeyBuilder::new(&pk_schema);
         for column_id in &table.columns_schema.primary_key {
             let Ok(idx) = prepared_values

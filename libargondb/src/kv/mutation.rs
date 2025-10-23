@@ -4,7 +4,7 @@ use bytemuck::{CheckedBitPattern, NoUninit, bytes_of, checked, from_bytes};
 
 use crate::kv::{
     error::KVRuntimeError,
-    primary_key::{PrimaryKeyComparator, PrimaryKeySchema},
+    primary_key::{KVPrimaryKeyComparator, KVPrimaryKeySchema},
 };
 
 pub trait Mutation {
@@ -62,11 +62,11 @@ pub struct MutationComparator;
 
 impl MutationComparator {
     pub fn cmp<T: Mutation + ?Sized, U: Mutation + ?Sized>(
-        schema: &PrimaryKeySchema,
+        schema: &KVPrimaryKeySchema,
         this: &T,
         that: &U,
     ) -> Result<Ordering, KVRuntimeError> {
-        match PrimaryKeyComparator::cmp(schema, this.primary_key(), that.primary_key())? {
+        match KVPrimaryKeyComparator::cmp(schema, this.primary_key(), that.primary_key())? {
             Ordering::Equal => {}
             ord => return Ok(ord),
         }
@@ -86,12 +86,12 @@ impl MutationComparator {
     }
 
     pub fn eq<T: Mutation + ?Sized, U: Mutation + ?Sized>(
-        schema: &PrimaryKeySchema,
+        schema: &KVPrimaryKeySchema,
         this: &T,
         that: &U,
     ) -> Result<bool, KVRuntimeError> {
         Ok(
-            PrimaryKeyComparator::eq(schema, this.primary_key(), that.primary_key())?
+            KVPrimaryKeyComparator::eq(schema, this.primary_key(), that.primary_key())?
                 && this.timestamp().eq(that.timestamp())
                 && this.column_id().eq(that.column_id())
                 && this.mutation_type().eq(that.mutation_type()),

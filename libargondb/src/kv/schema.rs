@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Debug};
 
 use crate::kv::column_type::{self, ColumnType, ColumnTypeCode};
 
-#[derive(Clone, Debug)]
-pub struct KVColumnsSchema {
+#[derive(Clone)]
+pub struct KVTableSchema {
     pub columns: Vec<KVColumnSchema>,
 
     /** Contains IDs of columns being part of primary key in correct order */
@@ -11,7 +11,7 @@ pub struct KVColumnsSchema {
     pub column_name_map: BTreeMap<String, u16>,
 }
 
-impl KVColumnsSchema {
+impl KVTableSchema {
     pub fn columns_count(&self) -> u16 {
         let len = self.columns.len();
         assert!(len <= u16::MAX as usize);
@@ -43,20 +43,18 @@ impl KVColumnsSchema {
     }
 }
 
+impl Debug for KVTableSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KVTableSchema")
+            .field("columns", &self.columns)
+            .field("primary_key", &self.primary_key)
+            .finish()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct KVColumnSchema {
     pub column_id: u16,
     pub column_name: String,
     pub column_type: ColumnTypeCode,
-}
-
-impl KVColumnSchema {
-    pub fn column_type(&self) -> impl ColumnType {
-        todo!();
-        column_type::Bytes
-    }
-
-    pub fn column_name(&self) -> &str {
-        todo!()
-    }
 }

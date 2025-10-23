@@ -2,9 +2,9 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::{
     kv::{
-        memtable_factory::MemtableFactory,
-        scan::{RangeScanParams, ScanExecutor},
-        schema::KVColumnsSchema,
+        config::KVConfig,
+        factory::{self, KVFactory},
+        schema::KVTableSchema,
         table_state::KVTableState,
     },
     utils::rcu::RCU,
@@ -12,14 +12,19 @@ use crate::{
 
 #[derive(Debug)]
 pub struct KVTable {
+    factory: KVFactory,
     state: RCU<KVTableState>,
 }
 
 impl KVTable {
-    pub fn create(columns_schema: KVColumnsSchema) -> Self {
-        let table_state = KVTableState::for_new_table(columns_schema);
+    pub fn create(config: KVConfig, columns_schema: KVTableSchema) -> Self {
+        let factory = KVFactory::new(config);
+
+        let memtable = factory.new_memtable(&columns_schema);
+        let table_state = KVTableState::for_new_table(columns_schema, memtable);
 
         Self {
+            factory,
             state: RCU::new(Arc::new(table_state)),
         }
     }
@@ -38,7 +43,7 @@ impl KVTable {
                     return None;
                 }
 
-                next_state.current_memtable = MemtableFactory::new(&next_state.columns_schema);
+                next_state.current_memtable = self.factory.new_memtable(&next_state.columns_schema);
                 next_state.read_memtables.push(current_memtable);
 
                 // todo!("add to flush queue or sth");

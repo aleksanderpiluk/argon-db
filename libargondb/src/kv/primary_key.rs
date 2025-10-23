@@ -3,17 +3,20 @@ use crate::{
     kv::{
         column_type::{ColumnType, ColumnTypeCode},
         error::{KVConstructorError, KVRuntimeError},
-        schema::KVColumnsSchema,
+        schema::KVTableSchema,
     },
 };
 use bytemuck::{bytes_of, from_bytes};
 use std::cmp::Ordering;
 
+/**
+ * Stores schema of primary key
+ */
 #[derive(Debug)]
-pub struct PrimaryKeySchema(Box<[u8]>);
+pub struct KVPrimaryKeySchema(Box<[u8]>);
 
-impl PrimaryKeySchema {
-    pub fn from_columns_schema(columns_schema: &KVColumnsSchema) -> Self {
+impl KVPrimaryKeySchema {
+    pub fn from_columns_schema(columns_schema: &KVTableSchema) -> Self {
         let column_count = columns_schema.primary_key.len();
         assert!(column_count > 0);
         assert!(column_count <= u8::MAX as usize);
@@ -60,7 +63,7 @@ impl PrimaryKeySchema {
 }
 
 pub struct PrimaryKeyView<'a> {
-    schema: &'a PrimaryKeySchema,
+    schema: &'a KVPrimaryKeySchema,
     key: &'a [u8],
 
     column_idx: usize,
@@ -68,7 +71,10 @@ pub struct PrimaryKeyView<'a> {
 }
 
 impl<'a> PrimaryKeyView<'a> {
-    fn construct(schema: &'a PrimaryKeySchema, key: &'a [u8]) -> Result<Self, KVConstructorError> {
+    fn construct(
+        schema: &'a KVPrimaryKeySchema,
+        key: &'a [u8],
+    ) -> Result<Self, KVConstructorError> {
         let column_count = schema.column_count() as usize;
         let column_idx = 0;
 
@@ -104,11 +110,11 @@ impl<'a> PrimaryKeyView<'a> {
     }
 }
 
-pub struct PrimaryKeyComparator;
+pub struct KVPrimaryKeyComparator;
 
-impl PrimaryKeyComparator {
+impl KVPrimaryKeyComparator {
     pub fn cmp(
-        schema: &PrimaryKeySchema,
+        schema: &KVPrimaryKeySchema,
         this: &[u8],
         that: &[u8],
     ) -> Result<Ordering, KVRuntimeError> {
@@ -135,7 +141,11 @@ impl PrimaryKeyComparator {
         Ok(Ordering::Equal)
     }
 
-    pub fn eq(schema: &PrimaryKeySchema, this: &[u8], that: &[u8]) -> Result<bool, KVRuntimeError> {
+    pub fn eq(
+        schema: &KVPrimaryKeySchema,
+        this: &[u8],
+        that: &[u8],
+    ) -> Result<bool, KVRuntimeError> {
         let column_count = schema.column_count();
 
         let mut this_key =
@@ -168,13 +178,13 @@ fn column_eq<T: ColumnType>(_col_type: T, this: &[u8], that: &[u8]) -> bool {
 }
 
 pub struct PrimaryKeyBuilder<'a> {
-    schema: &'a PrimaryKeySchema,
+    schema: &'a KVPrimaryKeySchema,
     data: Vec<u8>,
     column_idx: u8,
 }
 
 impl<'a> PrimaryKeyBuilder<'a> {
-    pub fn new(schema: &'a PrimaryKeySchema) -> Self {
+    pub fn new(schema: &'a KVPrimaryKeySchema) -> Self {
         let column_count = schema.column_count() as usize;
 
         Self {
@@ -199,5 +209,49 @@ impl<'a> PrimaryKeyBuilder<'a> {
 
     pub fn build(self) -> Box<[u8]> {
         self.data.into_boxed_slice()
+    }
+}
+
+pub enum PrimaryKeyMarker {
+    Start,
+    End,
+    Key(Box<[u8]>),
+}
+
+struct PrimaryKeyMarkerComparator;
+
+impl PrimaryKeyMarkerComparator {
+    pub fn cmp(
+        schema: &KVPrimaryKeySchema,
+        this: &PrimaryKeyMarker,
+        that: &PrimaryKeyMarker,
+    ) -> Result<Ordering, KVRuntimeError> {
+        if let PrimaryKeyMarker::Start = this {
+            if let PrimaryKeyMarker::Start = that {
+                return Ok(Ordering::Equal);
+            } else {
+                return Ok(Ordering::Less);
+            }
+        }
+
+        if let PrimaryKeyMarker::End = this {
+            if let PrimaryKeyMarker::End = that {
+                return Ok(Ordering::Equal);
+            } else {
+                return Ok(Ordering::Greater);
+            }
+        }
+
+        if let PrimaryKeyMarker::Key(this_key) = this {
+            return match that {
+                PrimaryKeyMarker::Key(that_key) => {
+                    KVPrimaryKeyComparator::cmp(schema, &this_key, &that_key)
+                }
+                PrimaryKeyMarker::Start => Ok(Ordering::Greater),
+                PrimaryKeyMarker::End => Ok(Ordering::Less),
+            };
+        }
+
+        panic!("PrimaryKeyMarkerComparator fatal error");
     }
 }

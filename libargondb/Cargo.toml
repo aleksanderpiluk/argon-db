@@ -12,3 +12,4 @@ libc = "0.2.172"
 bytemuck = { version = "1.23.2", features = ["derive"] }
 arc-swap = "1.7.1"
 async-lock = "3.4.1"
+async-trait = "0.1.89"

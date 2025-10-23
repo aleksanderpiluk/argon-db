@@ -1,9 +1,8 @@
-use std::{ops::Deref, sync::Arc};
+use std::{fmt::Debug, ops::Deref, sync::Arc};
 
 use arc_swap::ArcSwap;
 use async_lock::Mutex;
 
-#[derive(Debug)]
 pub struct RCU<T> {
     state_mut_lock: Mutex<()>,
     state: ArcSwap<T>,
@@ -31,5 +30,13 @@ impl<T> RCU<T> {
         if let Some(next) = mutate_fn(&current) {
             self.state.store(Arc::new(next));
         }
+    }
+}
+
+impl<T: Debug> Debug for RCU<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RCU")
+            .field("state", &self.state.load_full())
+            .finish()
     }
 }

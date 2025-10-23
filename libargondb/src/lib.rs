@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+mod argonfile;
 mod block_cache;
 mod catalog;
 mod data_types;
