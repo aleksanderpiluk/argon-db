@@ -255,3 +255,14 @@ impl PrimaryKeyMarkerComparator {
         panic!("PrimaryKeyMarkerComparator fatal error");
     }
 }
+
+pub struct KVPrimaryKeyUtils;
+
+impl KVPrimaryKeyUtils {
+    pub fn size(primary_key: &[u8]) -> u16 {
+        let pk_size = primary_key.len();
+        assert!(pk_size <= u16::MAX as usize);
+
+        pk_size as u16
+    }
+}

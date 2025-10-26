@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 use crate::kv::{
     error::KVRuntimeError,
-    mutation::{Mutation, MutationComparator},
+    mutation::{KVMutation, MutationComparator},
     primary_key::{KVPrimaryKeySchema, PrimaryKeyMarker},
     table_state::KVTableState,
 };
@@ -34,7 +34,7 @@ pub trait KVScanIterator {
 pub trait KVScanIteratorItem {
     fn primary_key(&self) -> &[u8];
 
-    fn mutation(&self) -> &dyn Mutation;
+    fn mutation(&self) -> &dyn KVMutation;
 }
 
 pub struct KVRangeScan {

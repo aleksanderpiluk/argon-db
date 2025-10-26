@@ -3,7 +3,7 @@ mod lock;
 use crate::kv::{
     error::KVRuntimeError,
     memtable::lock::MemtableLock,
-    mutation::{Mutation, MutationComparator, MutationUtils, StructuredMutation},
+    mutation::{KVMutation, MutationComparator, MutationUtils, StructuredMutation},
     primary_key::{KVPrimaryKeySchema, PrimaryKeyMarker},
     scan::{KVRangeScan, KVScanIterator, KVScannable},
 };
@@ -150,7 +150,7 @@ impl MemtableMutation {
         }
     }
 
-    fn as_mutation(&self) -> &dyn Mutation {
+    fn as_mutation(&self) -> &dyn KVMutation {
         &self.mutation
     }
 }

@@ -1,3 +1,23 @@
+mod block;
+mod builder;
+mod checksum;
+mod compression;
+mod error;
+mod reader;
+mod row;
+mod stats;
+mod summary;
+mod trailer;
+mod utils;
+
+pub struct ArgonfileReader {
+    compression: ArgonfileCompressionType,
+}
+
+pub enum ArgonfileCompressionType {
+    None,
+}
+
 use bytemuck::from_bytes;
 
 fn summary_block_lookup() {

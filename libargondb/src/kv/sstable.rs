@@ -4,6 +4,7 @@ use async_trait::async_trait;
 
 use crate::kv::{
     error::KVRuntimeError,
+    mutation::KVMutation,
     scan::{KVRangeScan, KVScanIterator, KVScanIteratorItem},
 };
 
@@ -122,9 +123,19 @@ impl KVScanIterator for KVSSTableScanIter {
 
 #[async_trait]
 pub trait KVSSTableReader {
+    async fn initial_read(&self);
+
     async fn read_data_block(&self, ptr: &()) -> Box<dyn KVSSTableDataBlockIter + Send + Sync>;
 }
 
 pub trait KVSSTableDataBlockIter {
     fn next(&mut self) -> Option<Box<dyn KVScanIteratorItem + Send + Sync>>;
+}
+
+#[async_trait]
+pub trait KVSStableBuilder {
+    /**
+     * Add next mutation to builded SSTable file. In caller responsibility is to ensure that next mutations are passed in strict order. If given mutation breaks ordering, implementation should error.
+     */
+    async fn add_mutation<T: KVMutation + Send + Sync>(&mut self, mutation: &T) -> Result<(), ()>;
 }

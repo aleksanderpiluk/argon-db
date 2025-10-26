@@ -1,18 +1,16 @@
-use std::{cmp::Ordering, io::Write};
-
-use bytemuck::{CheckedBitPattern, NoUninit, bytes_of, checked, from_bytes};
-
 use crate::kv::{
     error::KVRuntimeError,
     primary_key::{KVPrimaryKeyComparator, KVPrimaryKeySchema},
 };
+use bytemuck::{CheckedBitPattern, NoUninit, bytes_of, checked, from_bytes};
+use std::{cmp::Ordering, io::Write};
 
-pub trait Mutation {
-    fn timestamp(&self) -> &u64;
+pub trait KVMutation {
+    fn timestamp(&self) -> u64;
 
-    fn column_id(&self) -> &u16;
+    fn column_id(&self) -> u16;
 
-    fn mutation_type(&self) -> &MutationType;
+    fn mutation_type(&self) -> MutationType;
 
     fn primary_key_size(&self) -> u16;
 
@@ -61,7 +59,7 @@ pub enum MutationError {
 pub struct MutationComparator;
 
 impl MutationComparator {
-    pub fn cmp<T: Mutation + ?Sized, U: Mutation + ?Sized>(
+    pub fn cmp<T: KVMutation + ?Sized, U: KVMutation + ?Sized>(
         schema: &KVPrimaryKeySchema,
         this: &T,
         that: &U,
@@ -85,7 +83,7 @@ impl MutationComparator {
         Ok(this.mutation_type().cmp(that.mutation_type()))
     }
 
-    pub fn eq<T: Mutation + ?Sized, U: Mutation + ?Sized>(
+    pub fn eq<T: KVMutation + ?Sized, U: KVMutation + ?Sized>(
         schema: &KVPrimaryKeySchema,
         this: &T,
         that: &U,
@@ -133,7 +131,7 @@ impl StructuredMutation {
         })
     }
 
-    pub fn from_mutation<T: Mutation + ?Sized>(mutation: &T) -> Self {
+    pub fn from_mutation<T: KVMutation + ?Sized>(mutation: &T) -> Self {
         Self {
             timestamp: *mutation.timestamp(),
             column_id: *mutation.column_id(),
@@ -158,7 +156,7 @@ impl StructuredMutation {
     }
 }
 
-impl Mutation for StructuredMutation {
+impl KVMutation for StructuredMutation {
     fn timestamp(&self) -> &u64 {
         &self.timestamp
     }
@@ -208,7 +206,7 @@ impl<'a> SerializedMutationView<'a> {
     }
 }
 
-impl<'a> Mutation for SerializedMutationView<'a> {
+impl<'a> KVMutation for SerializedMutationView<'a> {
     fn timestamp(&self) -> &u64 {
         from_bytes::<u64>(&self.0[0..8])
     }
@@ -244,11 +242,11 @@ impl<'a> Mutation for SerializedMutationView<'a> {
 pub struct MutationUtils;
 
 impl MutationUtils {
-    pub fn is_marker(mutation: &impl Mutation) -> bool {
+    pub fn is_marker(mutation: &impl KVMutation) -> bool {
         mutation.mutation_type().is_marker()
     }
 
-    pub fn serialize<W: Write>(writer: &mut W, mutation: impl Mutation) {
+    pub fn serialize<W: Write>(writer: &mut W, mutation: impl KVMutation) {
         // TODO: Better error handling
         writer.write(bytes_of(mutation.timestamp()));
         writer.write(bytes_of(mutation.column_id()));
@@ -259,7 +257,7 @@ impl MutationUtils {
         writer.write(mutation.value());
     }
 
-    pub fn as_dyn<T: Mutation>(mutation: &T) -> &dyn Mutation {
+    pub fn as_dyn<T: KVMutation>(mutation: &T) -> &dyn KVMutation {
         mutation
     }
 }

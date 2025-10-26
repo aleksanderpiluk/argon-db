@@ -24,7 +24,7 @@ impl BlockCache {
         }
     }
 
-    fn get_block(&self, tag: u64, bump_usage_count: bool) -> BlockSharedGuard {
+    pub fn get_block(&self, tag: u64, bump_usage_count: bool) -> BlockSharedGuard {
         loop {
             if let Some(block) = self.map.get_shared(tag, bump_usage_count) {
                 return block;
