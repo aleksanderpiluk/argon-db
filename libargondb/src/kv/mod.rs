@@ -12,4 +12,4 @@ mod sstable;
 pub mod table;
 pub mod table_state;
 
-pub use sstable::{KVSSTableDataBlockIter, KVSSTableReader, KVSStableBuilder};
+pub use sstable::{KVSSTableBuilder, KVSSTableDataBlockIter, KVSSTableReader};

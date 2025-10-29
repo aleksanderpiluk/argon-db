@@ -1,12 +1,28 @@
 use std::io::Write;
 
+use super::block_ptr::{ArgonfileBlockPointer, ArgonfileBlockPointerWriter};
+use crate::argonfile::{
+    error::ArgonfileWriterError,
+    utils::{
+        ArgonfileSizeCountingWriter, ArgonfileWrite, checked_write, inner_writer_error_mapper,
+    },
+};
+
 pub struct ArgonfileTrailerWriter;
 
 impl ArgonfileTrailerWriter {
-    pub fn write<W: Write>(w: &mut W) {
-        todo!()
-        // 1. Write summary block pointer
-        // 2. Write stats block pointer
-        // 3. Write compression type info
+    pub fn write(
+        w: &mut impl ArgonfileWrite,
+        summary_block_ptr: &ArgonfileBlockPointer,
+        stats_block_ptr: &ArgonfileBlockPointer,
+        compression_type: u16,
+    ) -> Result<usize, ArgonfileWriterError> {
+        let mut writer = ArgonfileSizeCountingWriter::new(w);
+
+        ArgonfileBlockPointerWriter::write(&mut writer, summary_block_ptr)?;
+        ArgonfileBlockPointerWriter::write(&mut writer, stats_block_ptr)?;
+        writer.write(&u16::to_le_bytes(compression_type))?;
+
+        Ok(writer.size())
     }
 }

@@ -4,7 +4,7 @@ use crc32c::crc32c;
 pub struct ArgonfileCRC32Checksum;
 
 impl ArgonfileChecksumStrategy for ArgonfileCRC32Checksum {
-    fn checksum_type() -> u8 {
+    fn checksum_type(&self) -> u8 {
         todo!()
     }
 
@@ -27,5 +27,9 @@ impl ArgonfileChecksumStrategy for ArgonfileCRC32Checksum {
         let data_checksum = crc32c(data);
 
         Ok(data_checksum == given_checksum)
+    }
+
+    fn clone(&self) -> Self {
+        Self
     }
 }

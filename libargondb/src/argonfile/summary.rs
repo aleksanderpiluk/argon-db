@@ -1,15 +1,26 @@
+use crate::{argonfile::utils::ArgonfileWrite, kv::mutation::KVMutation};
+
+use super::block_ptr::ArgonfileBlockPointer;
+use std::io::Write;
+
 pub struct ArgonfileSummaryBuilder {
     block_builder: (),
 }
 
 impl ArgonfileSummaryBuilder {
-    pub fn add_block(&mut self, min_partition_key: &[u8]) {
+    pub fn new() -> Self {
         todo!()
     }
 
-    pub fn finish_block(&mut self, block_ptr: ()) {
+    pub fn next_block_with_min_key(&mut self, mutation: &impl KVMutation) {
         todo!()
     }
 
-    pub fn build(self) {}
+    pub fn finish_block_with_ptr(&mut self, block_ptr: ArgonfileBlockPointer) {
+        todo!()
+    }
+
+    pub fn build(self, writer: &mut impl ArgonfileWrite) -> ArgonfileBlockPointer {
+        todo!()
+    }
 }

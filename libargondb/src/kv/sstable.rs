@@ -133,7 +133,7 @@ pub trait KVSSTableDataBlockIter {
 }
 
 #[async_trait]
-pub trait KVSStableBuilder {
+pub trait KVSSTableBuilder {
     /**
      * Add next mutation to builded SSTable file. In caller responsibility is to ensure that next mutations are passed in strict order. If given mutation breaks ordering, implementation should error.
      */

@@ -1,6 +1,9 @@
+use std::io::Write;
+
 use bloomfilter::Bloom;
 
-use crate::kv::mutation::KVMutation;
+use super::block_ptr::ArgonfileBlockPointer;
+use crate::{argonfile::utils::ArgonfileWrite, kv::mutation::KVMutation};
 
 pub struct ArgonfileStatsBuilder {
     bloom: Bloom<[u8]>,
@@ -20,7 +23,7 @@ impl ArgonfileStatsBuilder {
         self.bloom.set(mutation.primary_key());
     }
 
-    pub fn build(self) {
+    pub fn build(self, writer: &mut impl ArgonfileWrite) -> ArgonfileBlockPointer {
         todo!()
     }
 }

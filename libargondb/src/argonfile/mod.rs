@@ -1,8 +1,12 @@
 mod block;
+mod block_identifier;
+mod block_ptr;
 mod builder;
 mod checksum;
 mod compression;
+mod config;
 mod error;
+mod magic;
 mod reader;
 mod row;
 mod stats;
