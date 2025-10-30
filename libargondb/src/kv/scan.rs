@@ -70,9 +70,9 @@ pub enum ColumnFilter {
     All,
 }
 
-pub struct ScanExecutor;
+pub struct KVScanExecutor;
 
-impl ScanExecutor {
+impl KVScanExecutor {
     pub fn execute(
         table: &KVTableState,
         scan_op: impl KVScanOp,

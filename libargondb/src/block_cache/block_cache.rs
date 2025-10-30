@@ -1,19 +1,24 @@
-use crate::block_cache::{
-    block_buffer::{BlockBuffer, BlockExclusiveGuard, BlockSharedGuard},
-    block_map::BlockMap,
-    freelist::Freelist,
+use crate::{
+    block_cache::{
+        block_map::BlockMap,
+        freelist::Freelist,
+        page_buffer::{BlockExclusiveGuard, BlockSharedGuard, PageBuffer},
+    },
+    kv::KVSSTableBlockPtr,
 };
+
+pub type BlockCacheTag = KVSSTableBlockPtr;
 
 pub struct BlockCache {
     config: BlockCacheConfig,
-    buffer: BlockBuffer,
+    buffer: PageBuffer,
     map: BlockMap,
     freelist: Freelist,
 }
 
 impl BlockCache {
     fn new(config: BlockCacheConfig) -> Self {
-        let buffer = BlockBuffer::new(&config);
+        let buffer = PageBuffer::new(&config);
         let map = BlockMap::new(&config);
         let freelist = Freelist::new(&buffer);
         Self {
@@ -24,7 +29,7 @@ impl BlockCache {
         }
     }
 
-    pub fn get_block(&self, tag: u64, bump_usage_count: bool) -> BlockSharedGuard {
+    pub fn get_block(&self, tag: &BlockCacheTag, bump_usage_count: bool) -> BlockSharedGuard {
         loop {
             if let Some(block) = self.map.get_shared(tag, bump_usage_count) {
                 return block;

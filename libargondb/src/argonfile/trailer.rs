@@ -8,6 +8,16 @@ use crate::argonfile::{
     },
 };
 
+pub struct ArgonfileTrailer {}
+
+pub struct ArgonfileTrailerReader;
+
+impl ArgonfileTrailerReader {
+    pub fn read() {
+        todo!()
+    }
+}
+
 pub struct ArgonfileTrailerWriter;
 
 impl ArgonfileTrailerWriter {

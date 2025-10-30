@@ -3,22 +3,23 @@ use std::{
     hint,
     ops::{Deref, DerefMut},
     ptr::NonNull,
+    task::Waker,
 };
 
 use crate::block_cache::{
-    block_cache::BlockCacheConfig,
+    block_cache::{BlockCacheConfig, BlockCacheTag},
     block_lock::{BlockLock, TryExclusiveLockError},
     freelist::FreelistNext,
 };
 
-pub struct BlockBuffer {
-    block_size: usize,
-    blocks_total: usize,
-    headers: NonNull<BlockHeader>,
+pub struct PageBuffer {
+    page_size: usize,
+    pages_total: usize,
+    headers: NonNull<PageHeader>,
     blocks: NonNull<u8>,
 }
 
-impl BlockBuffer {
+impl PageBuffer {
     pub fn new(config: &BlockCacheConfig) -> Self {
         let alignment = size_of::<libc::max_align_t>();
         if config.block_size % alignment != 0 {
@@ -34,7 +35,7 @@ impl BlockBuffer {
         let (headers_layout, blocks_layout) = Self::get_layouts(blocks_total, block_size);
 
         let (headers, blocks) = unsafe {
-            let headers = NonNull::new(alloc(headers_layout) as *mut BlockHeader)
+            let headers = NonNull::new(alloc(headers_layout) as *mut PageHeader)
                 .unwrap_or_else(|| handle_alloc_error(headers_layout));
             let blocks = NonNull::new(alloc(blocks_layout))
                 .unwrap_or_else(|| handle_alloc_error(blocks_layout));
@@ -45,51 +46,51 @@ impl BlockBuffer {
         for i in 0..blocks_total {
             let header = unsafe { headers.add(i) }.as_ptr();
             unsafe {
-                *header = BlockHeader {
-                    data: blocks.add(i * block_size),
-                    state: BlockState::Free,
-                    tag: None,
+                *header = PageHeader {
                     lock: BlockLock::new(),
-                    next_free: if i + 1 < blocks_total {
-                        Some(headers.add(i + 1))
-                    } else {
-                        None
+                    data: blocks.add(i * block_size),
+                    state: PageState::Free {
+                        next_free: if i + 1 < blocks_total {
+                            Some(headers.add(i + 1))
+                        } else {
+                            None
+                        },
                     },
                 }
             }
         }
 
         Self {
-            blocks_total,
-            block_size,
+            pages_total: blocks_total,
+            page_size: block_size,
             headers,
             blocks,
         }
     }
 
-    pub fn blocks_total_count(&self) -> usize {
-        self.blocks_total
+    pub fn pages_total_count(&self) -> usize {
+        self.pages_total
     }
 
-    pub fn get_header(&self, idx: usize) -> Option<NonNull<BlockHeader>> {
-        if idx < self.blocks_total {
+    pub fn get_header(&self, idx: usize) -> Option<NonNull<PageHeader>> {
+        if idx < self.pages_total {
             Some(unsafe { self.headers.add(idx) })
         } else {
             None
         }
     }
 
-    fn get_layouts(blocks_total: usize, block_size: usize) -> (Layout, Layout) {
-        let headers_layout = Layout::array::<BlockHeader>(blocks_total).unwrap();
-        let blocks_layout = Layout::array::<u8>(blocks_total * block_size).unwrap();
+    fn get_layouts(pages_total: usize, page_size: usize) -> (Layout, Layout) {
+        let headers_layout = Layout::array::<PageHeader>(pages_total).unwrap();
+        let blocks_layout = Layout::array::<u8>(pages_total * page_size).unwrap();
 
         (headers_layout, blocks_layout)
     }
 }
 
-impl Drop for BlockBuffer {
+impl Drop for PageBuffer {
     fn drop(&mut self) {
-        let (headers_layout, blocks_layout) = Self::get_layouts(self.blocks_total, self.block_size);
+        let (headers_layout, blocks_layout) = Self::get_layouts(self.pages_total, self.page_size);
 
         unsafe {
             dealloc(self.headers.as_ptr() as *mut u8, headers_layout);
@@ -98,40 +99,42 @@ impl Drop for BlockBuffer {
     }
 }
 
-pub struct BlockHeader {
+pub struct PageHeader {
     lock: BlockLock,
     data: NonNull<u8>,
-    state: BlockState,
-    tag: Option<u64>,
-    next_free: FreelistNext,
+    state: PageState,
 }
 
-impl BlockHeader {
+impl PageHeader {
+    pub fn is_ready(&self) -> bool {
+        if let PageState::Block { .. } = self.state {
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn is_free(&self) -> bool {
-        self.state == BlockState::Free
+        if let PageState::Free { .. } = self.state {
+            true
+        } else {
+            false
+        }
     }
 
     pub fn is_acquired(&self) -> bool {
-        self.state == BlockState::Acquired
-    }
-
-    pub fn is_loaded(&self) -> bool {
-        self.state == BlockState::Loaded
-    }
-
-    pub fn next_free(&self) -> FreelistNext {
-        self.next_free
-    }
-
-    pub fn tag(&self) -> Option<u64> {
-        self.tag
+        if let PageState::Acquired { .. } = self.state {
+            true
+        } else {
+            false
+        }
     }
 
     pub fn free(&mut self) {
         todo!()
     }
 
-    pub fn acquire(&mut self, tag: u64) {
+    pub fn acquire(&mut self, tag: BlockCacheTag) {
         todo!()
     }
 
@@ -165,26 +168,36 @@ impl BlockHeader {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum BlockState {
-    Free,
-    Acquired,
-    Loaded,
+#[derive(Clone)]
+enum PageState {
+    Acquired {
+        read_dispatched: bool,
+        wakers: Vec<Waker>,
+    },
+    Free {
+        next_free: FreelistNext,
+    },
+    Block {
+        tag: Option<BlockCacheTag>,
+        block_size: usize,
+        overflow_page: Option<NonNull<PageHeader>>,
+    },
+    OverflowPage {
+        overflow_page: Option<NonNull<PageHeader>>,
+    },
 }
 
 /**
  * Guards write access to the block(both header and data). When dropped, drops exclusive lock obtained on block.
  */
-pub struct BlockExclusiveGuard(NonNull<BlockHeader>);
+pub struct BlockExclusiveGuard(NonNull<PageHeader>);
 
 impl BlockExclusiveGuard {
-    pub fn header(&self) -> NonNull<BlockHeader> {
+    pub fn header(&self) -> NonNull<PageHeader> {
         self.0
     }
 
-    pub unsafe fn try_acquire_for(
-        ptr: NonNull<BlockHeader>,
-    ) -> Result<Self, TryExclusiveLockError> {
+    pub unsafe fn try_acquire_for(ptr: NonNull<PageHeader>) -> Result<Self, TryExclusiveLockError> {
         match unsafe { ptr.as_ref() }.lock.try_exclusive_lock() {
             Ok(_) => Ok(Self(ptr)),
             Err(err) => Err(err),
@@ -195,7 +208,7 @@ impl BlockExclusiveGuard {
      * Acquires exclusive lock for block header. This function only guaranties that lock is obtained and it cannot
      * guarantee tag assigned to block hasn't change.
      */
-    pub unsafe fn acquire_for(ptr: NonNull<BlockHeader>) -> Self {
+    pub unsafe fn acquire_for(ptr: NonNull<PageHeader>) -> Self {
         // FIXME: This naive spin-lock implementation should be rewritten
         loop {
             match unsafe { ptr.as_ref() }.lock.try_exclusive_lock() {
@@ -209,7 +222,7 @@ impl BlockExclusiveGuard {
 }
 
 impl Deref for BlockExclusiveGuard {
-    type Target = BlockHeader;
+    type Target = PageHeader;
 
     fn deref(&self) -> &Self::Target {
         unsafe { self.0.as_ref() }
@@ -233,10 +246,12 @@ impl Drop for BlockExclusiveGuard {
 /**
  * Guards read access to the block(both header and data). When dropped, drops shared lock obtained on block.
  */
-pub struct BlockSharedGuard(NonNull<BlockHeader>);
+pub struct BlockSharedGuard(NonNull<PageHeader>);
+
+unsafe impl Sync for BlockSharedGuard {}
 
 impl BlockSharedGuard {
-    pub fn header(&self) -> NonNull<BlockHeader> {
+    pub fn header(&self) -> NonNull<PageHeader> {
         self.0
     }
 
@@ -244,7 +259,7 @@ impl BlockSharedGuard {
      * Acquires shared lock for block header. This function only guaranties that lock is obtained and it cannot
      * guarantee tag assigned to block hasn't change.
      */
-    pub unsafe fn acquire_for(ptr: NonNull<BlockHeader>, bump_usage_count: bool) -> Self {
+    pub unsafe fn acquire_for(ptr: NonNull<PageHeader>, bump_usage_count: bool) -> Self {
         // FIXME: This naive spin-lock implementation should be rewritten
         loop {
             match unsafe { ptr.as_ref() }
@@ -261,7 +276,7 @@ impl BlockSharedGuard {
 }
 
 impl Deref for BlockSharedGuard {
-    type Target = BlockHeader;
+    type Target = PageHeader;
 
     fn deref(&self) -> &Self::Target {
         unsafe { self.0.as_ref() }

@@ -2,10 +2,13 @@
 mod argonfile;
 mod block_cache;
 mod catalog;
-mod data_types;
 pub mod kv;
 mod module;
 pub mod ops;
-mod storage;
+mod subsystem;
 mod utils;
 mod wal;
+
+pub use argonfile::ArgonfileReader;
+pub use block_cache::BlockCache;
+pub use block_cache::CachedSSTableReader;

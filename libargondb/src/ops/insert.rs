@@ -1,8 +1,8 @@
 use crate::kv::{
+    KVTable,
     memtable::MemtableInsertError,
     mutation::{MutationType, StructuredMutation},
-    primary_key::{PrimaryKeyBuilder, KVPrimaryKeySchema},
-    table::KVTable,
+    primary_key::{KVPrimaryKeySchema, PrimaryKeyBuilder},
     table_state::KVTableState,
 };
 

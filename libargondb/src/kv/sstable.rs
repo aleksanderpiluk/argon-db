@@ -1,4 +1,4 @@
-use std::{mem, sync::Arc};
+use std::{fmt::Debug, mem, sync::Arc};
 
 use async_trait::async_trait;
 
@@ -11,12 +11,24 @@ use crate::kv::{
 use super::scan::KVScannable;
 
 pub struct KVSSTable {
-    reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>,
+    reader: Box<dyn KVSSTableReader + Send + Sync>,
     summary_index: KVSSTableSummaryIndex,
     stats: KVSSTableStats,
 }
 
-struct KVSSTableStats {
+impl KVSSTable {
+    pub async fn from_reader(reader: Box<dyn KVSSTableReader + Send + Sync>) -> Self {
+        let (stats, summary_index) = reader.read_stats_and_index().await;
+
+        Self {
+            reader,
+            summary_index,
+            stats,
+        }
+    }
+}
+
+pub struct KVSSTableStats {
     min_row: Box<[u8]>,
     max_row: Box<[u8]>,
 }
@@ -123,9 +135,12 @@ impl KVScanIterator for KVSSTableScanIter {
 
 #[async_trait]
 pub trait KVSSTableReader {
-    async fn initial_read(&self);
+    async fn read_stats_and_index(&self) -> (KVSSTableStats, KVSSTableSummaryIndex);
 
-    async fn read_data_block(&self, ptr: &()) -> Box<dyn KVSSTableDataBlockIter + Send + Sync>;
+    async fn read_data_block(
+        &self,
+        ptr: &KVSSTableBlockPtr,
+    ) -> Box<dyn KVSSTableDataBlockIter + Send + Sync>;
 }
 
 pub trait KVSSTableDataBlockIter {
@@ -138,4 +153,30 @@ pub trait KVSSTableBuilder {
      * Add next mutation to builded SSTable file. In caller responsibility is to ensure that next mutations are passed in strict order. If given mutation breaks ordering, implementation should error.
      */
     async fn add_mutation<T: KVMutation + Send + Sync>(&mut self, mutation: &T) -> Result<(), ()>;
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+pub struct KVSSTableBlockPtr(u64, u32);
+
+impl KVSSTableBlockPtr {
+    pub fn new(offset: u64, on_disk_size: u32) -> Self {
+        Self(offset, on_disk_size)
+    }
+
+    pub fn offset(&self) -> u64 {
+        self.0
+    }
+
+    pub fn on_disk_size(&self) -> u32 {
+        self.1
+    }
+}
+
+impl Debug for KVSSTableBlockPtr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KVSSTableBlockPtr")
+            .field("offset", &self.offset())
+            .field("on_disk_size", &self.on_disk_size())
+            .finish()
+    }
 }

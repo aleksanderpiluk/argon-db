@@ -14,9 +14,11 @@ mod summary;
 mod trailer;
 mod utils;
 
-pub struct ArgonfileReader {
-    compression: ArgonfileCompressionType,
-}
+// pub struct ArgonfileReader {
+//     compression: ArgonfileCompressionType,
+// }
+
+pub use reader::ArgonfileReader;
 
 pub enum ArgonfileCompressionType {
     None,

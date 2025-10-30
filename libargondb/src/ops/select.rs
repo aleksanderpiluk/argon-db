@@ -1,7 +1,5 @@
 use crate::kv::{
-    primary_key::PrimaryKeyMarker,
-    scan::{ColumnFilter, KVRangeScan, ScanExecutor},
-    table::KVTable,
+    ColumnFilter, KVRangeScan, KVScanExecutor, KVTable, primary_key::PrimaryKeyMarker,
 };
 
 pub struct SelectOp {}
@@ -13,7 +11,7 @@ impl SelectOp {
         let scan_params = KVRangeScan::new(from, to, ColumnFilter::All);
 
         let table_state = table.load_state();
-        ScanExecutor::execute(&table_state, scan_params).unwrap();
+        KVScanExecutor::execute(&table_state, scan_params).unwrap();
     }
 }
 

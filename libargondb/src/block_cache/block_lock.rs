@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use bitflags::bitflags;
 
+/// Holds combined shared-exclusive lock
 pub struct BlockLock(AtomicU64);
 
 impl BlockLock {

@@ -8,12 +8,9 @@ use crate::kv::{
     scan::{KVRangeScan, KVScanIterator, KVScannable},
 };
 use crossbeam_skiplist::{SkipSet, set::Entry};
-use std::{
-    ops::Deref,
-    sync::{
-        Arc,
-        atomic::{AtomicUsize, Ordering},
-    },
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
 };
 
 #[derive(Debug)]

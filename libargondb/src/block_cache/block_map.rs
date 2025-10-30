@@ -1,12 +1,12 @@
 use std::{collections::HashMap, ptr::NonNull, sync::Mutex};
 
 use crate::block_cache::{
-    block_buffer::{BlockExclusiveGuard, BlockHeader, BlockSharedGuard},
-    block_cache::BlockCacheConfig,
+    page_buffer::{BlockExclusiveGuard, BlockSharedGuard, PageHeader},
+    block_cache::{BlockCacheConfig, BlockCacheTag},
 };
 
 pub struct BlockMap {
-    inner: Mutex<HashMap<u64, NonNull<BlockHeader>>>,
+    inner: Mutex<HashMap<BlockCacheTag, NonNull<PageHeader>>>,
 }
 
 impl BlockMap {
@@ -18,7 +18,7 @@ impl BlockMap {
 
     pub fn try_assign_tag(
         &self,
-        tag: u64,
+        tag: &BlockCacheTag,
         mut block: BlockExclusiveGuard,
     ) -> Result<(), BlockExclusiveGuard> {
         assert!(block.is_free());
@@ -31,8 +31,8 @@ impl BlockMap {
             return Err(block);
         }
 
-        map.insert(tag, block.header());
-        block.acquire(tag);
+        map.insert(*tag, block.header());
+        block.acquire(*tag);
 
         drop(block);
         Ok(())
@@ -70,7 +70,7 @@ impl BlockMap {
         Ok(block)
     }
 
-    pub fn get_exclusive(&self, tag: u64) -> Option<BlockExclusiveGuard> {
+    pub fn get_exclusive(&self, tag: BlockCacheTag) -> Option<BlockExclusiveGuard> {
         let map = self.inner.lock().unwrap();
 
         let header = match map.get(&tag) {
@@ -88,7 +88,11 @@ impl BlockMap {
         Some(block)
     }
 
-    pub fn get_shared(&self, tag: u64, bump_usage_count: bool) -> Option<BlockSharedGuard> {
+    pub fn get_shared(
+        &self,
+        tag: &BlockCacheTag,
+        bump_usage_count: bool,
+    ) -> Option<BlockSharedGuard> {
         let map = self.inner.lock().unwrap();
 
         let header = match map.get(&tag) {
@@ -101,7 +105,7 @@ impl BlockMap {
 
         assert!(!block.is_free());
         assert_eq!(block.next_free(), None);
-        assert_eq!(block.tag(), Some(tag));
+        assert_eq!(block.tag(), Some(*tag));
 
         Some(block)
     }

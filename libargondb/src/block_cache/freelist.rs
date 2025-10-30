@@ -7,12 +7,12 @@ use std::{
 };
 
 use crate::block_cache::{
-    block_buffer::{BlockBuffer, BlockExclusiveGuard, BlockHeader},
     block_lock::TryExclusiveLockError,
     block_map::BlockMap,
+    page_buffer::{BlockExclusiveGuard, PageBuffer, PageHeader},
 };
 
-pub type FreelistNext = Option<NonNull<BlockHeader>>;
+pub type FreelistNext = Option<NonNull<PageHeader>>;
 
 pub struct Freelist {
     next_free: Mutex<FreelistNext>,
@@ -20,7 +20,7 @@ pub struct Freelist {
 }
 
 impl Freelist {
-    pub fn new(block_buffer: &BlockBuffer) -> Self {
+    pub fn new(block_buffer: &PageBuffer) -> Self {
         Self {
             next_free: Mutex::new(block_buffer.get_header(0)),
             clock_sweep_next_victim: AtomicUsize::new(0),
@@ -30,7 +30,7 @@ impl Freelist {
     /**
      * Pops block from freelist if any available or runs clock-sweep to free mapped block
      */
-    pub fn get_free_page(&self, buffer: &BlockBuffer, map: &BlockMap) -> BlockExclusiveGuard {
+    pub fn get_free_page(&self, buffer: &PageBuffer, map: &BlockMap) -> BlockExclusiveGuard {
         if let Some(block) = self.pop() {
             return block;
         }
@@ -71,7 +71,7 @@ impl Freelist {
         }
     }
 
-    fn clock_sweep(&self, buffer: &BlockBuffer, map: &BlockMap) -> BlockExclusiveGuard {
+    fn clock_sweep(&self, buffer: &PageBuffer, map: &BlockMap) -> BlockExclusiveGuard {
         loop {
             let Some(block) = self.clock_sweep_tick(buffer) else {
                 continue;
@@ -93,10 +93,10 @@ impl Freelist {
         }
     }
 
-    fn clock_sweep_tick(&self, buffer: &BlockBuffer) -> Option<BlockExclusiveGuard> {
+    fn clock_sweep_tick(&self, buffer: &PageBuffer) -> Option<BlockExclusiveGuard> {
         let mut victim_idx = self.clock_sweep_next_victim.fetch_add(1, Ordering::Relaxed);
-        if victim_idx >= buffer.blocks_total_count() {
-            let bounded_idx = victim_idx % buffer.blocks_total_count();
+        if victim_idx >= buffer.pages_total_count() {
+            let bounded_idx = victim_idx % buffer.pages_total_count();
 
             // TODO: Revise this orderings
             // Generally this operation is safe to fail, in case of overflow clock-sweep will behave weirdly but it shouldn't cause errors in state of system

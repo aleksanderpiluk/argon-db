@@ -1,7 +1,6 @@
 use crate::kv::{
     memtable::Memtable,
     scan::{KVRangeScan, KVScanIterator, KVScannable},
-    sstable::SSTableBuilder,
 };
 
 pub struct Flusher {
@@ -16,7 +15,7 @@ impl Flusher {
     }
 
     pub fn run(self) {
-        let mut sstable_builder: SSTableBuilder;
+        // let mut sstable_builder: SSTableBuilder;
 
         todo!()
         // let params: RangeScanParams;

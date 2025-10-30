@@ -1,10 +1,10 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::kv::{
+    KVTable,
     column_type::ColumnTypeCode,
     config::KVConfig,
     schema::{KVColumnSchema, KVTableSchema},
-    table::KVTable,
 };
 
 #[derive(Debug)]

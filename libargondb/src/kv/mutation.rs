@@ -69,18 +69,18 @@ impl MutationComparator {
             ord => return Ok(ord),
         }
 
-        match this.timestamp().cmp(that.timestamp()) {
+        match this.timestamp().cmp(&that.timestamp()) {
             Ordering::Equal => {}
             Ordering::Greater => return Ok(Ordering::Less),
             Ordering::Less => return Ok(Ordering::Greater),
         };
 
-        match this.column_id().cmp(that.column_id()) {
+        match this.column_id().cmp(&that.column_id()) {
             Ordering::Equal => {}
             ord => return Ok(ord),
         };
 
-        Ok(this.mutation_type().cmp(that.mutation_type()))
+        Ok(this.mutation_type().cmp(&that.mutation_type()))
     }
 
     pub fn eq<T: KVMutation + ?Sized, U: KVMutation + ?Sized>(
@@ -90,9 +90,9 @@ impl MutationComparator {
     ) -> Result<bool, KVRuntimeError> {
         Ok(
             KVPrimaryKeyComparator::eq(schema, this.primary_key(), that.primary_key())?
-                && this.timestamp().eq(that.timestamp())
-                && this.column_id().eq(that.column_id())
-                && this.mutation_type().eq(that.mutation_type()),
+                && this.timestamp().eq(&that.timestamp())
+                && this.column_id().eq(&that.column_id())
+                && this.mutation_type().eq(&that.mutation_type()),
         )
     }
 }
@@ -133,9 +133,9 @@ impl StructuredMutation {
 
     pub fn from_mutation<T: KVMutation + ?Sized>(mutation: &T) -> Self {
         Self {
-            timestamp: *mutation.timestamp(),
-            column_id: *mutation.column_id(),
-            mutation_type: *mutation.mutation_type(),
+            timestamp: mutation.timestamp(),
+            column_id: mutation.column_id(),
+            mutation_type: mutation.mutation_type(),
             primary_key: mutation.primary_key().to_vec().into_boxed_slice(),
             value: mutation.value().to_vec().into_boxed_slice(),
         }
@@ -157,16 +157,16 @@ impl StructuredMutation {
 }
 
 impl KVMutation for StructuredMutation {
-    fn timestamp(&self) -> &u64 {
-        &self.timestamp
+    fn timestamp(&self) -> u64 {
+        self.timestamp
     }
 
-    fn column_id(&self) -> &u16 {
-        &self.column_id
+    fn column_id(&self) -> u16 {
+        self.column_id
     }
 
-    fn mutation_type(&self) -> &MutationType {
-        &self.mutation_type
+    fn mutation_type(&self) -> MutationType {
+        self.mutation_type
     }
 
     fn primary_key_size(&self) -> u16 {
@@ -207,16 +207,16 @@ impl<'a> SerializedMutationView<'a> {
 }
 
 impl<'a> KVMutation for SerializedMutationView<'a> {
-    fn timestamp(&self) -> &u64 {
-        from_bytes::<u64>(&self.0[0..8])
+    fn timestamp(&self) -> u64 {
+        *from_bytes::<u64>(&self.0[0..8])
     }
 
-    fn column_id(&self) -> &u16 {
-        from_bytes::<u16>(&self.0[8..10])
+    fn column_id(&self) -> u16 {
+        *from_bytes::<u16>(&self.0[8..10])
     }
 
-    fn mutation_type(&self) -> &MutationType {
-        checked::from_bytes::<MutationType>(&self.0[10..11])
+    fn mutation_type(&self) -> MutationType {
+        *checked::from_bytes::<MutationType>(&self.0[10..11])
     }
 
     fn primary_key_size(&self) -> u16 {
@@ -244,17 +244,6 @@ pub struct MutationUtils;
 impl MutationUtils {
     pub fn is_marker(mutation: &impl KVMutation) -> bool {
         mutation.mutation_type().is_marker()
-    }
-
-    pub fn serialize<W: Write>(writer: &mut W, mutation: impl KVMutation) {
-        // TODO: Better error handling
-        writer.write(bytes_of(mutation.timestamp()));
-        writer.write(bytes_of(mutation.column_id()));
-        writer.write(bytes_of(mutation.mutation_type()));
-        writer.write(bytes_of(&mutation.primary_key_size()));
-        writer.write(bytes_of(&mutation.value_size()));
-        writer.write(mutation.primary_key());
-        writer.write(mutation.value());
     }
 
     pub fn as_dyn<T: KVMutation>(mutation: &T) -> &dyn KVMutation {

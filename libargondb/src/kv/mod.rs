@@ -6,10 +6,20 @@ mod flusher;
 pub mod memtable;
 pub mod mutation;
 pub mod primary_key;
-pub mod scan;
+mod scan;
 pub mod schema;
 mod sstable;
-pub mod table;
+mod table;
 pub mod table_state;
 
 pub use sstable::{KVSSTableBuilder, KVSSTableDataBlockIter, KVSSTableReader};
+
+pub use scan::ColumnFilter;
+pub use scan::KVRangeScan;
+pub use scan::KVScanExecutor;
+pub use scan::KVScanIteratorItem;
+pub use sstable::KVSSTable;
+pub use sstable::KVSSTableBlockPtr;
+pub use sstable::KVSSTableStats;
+pub use sstable::KVSSTableSummaryIndex;
+pub use table::KVTable;
