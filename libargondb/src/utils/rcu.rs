@@ -22,7 +22,7 @@ impl<T> RCU<T> {
 
     pub async fn mutate<F>(&self, mutate_fn: F)
     where
-        F: Fn(&T) -> Option<T>,
+        F: FnOnce(&T) -> Option<T>,
     {
         let _guard = self.state_mut_lock.lock().await;
 

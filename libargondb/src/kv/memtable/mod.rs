@@ -7,6 +7,7 @@ use crate::kv::{
     primary_key::{KVPrimaryKeySchema, PrimaryKeyMarker},
     scan::{KVRangeScan, KVScanIterator, KVScannable},
 };
+use async_trait::async_trait;
 use crossbeam_skiplist::{SkipSet, set::Entry};
 use std::sync::{
     Arc,
@@ -114,8 +115,12 @@ impl Memtable {
     }
 }
 
+#[async_trait]
 impl KVScannable for Memtable {
-    fn range_scan(&self, scan: &KVRangeScan) -> Result<Box<dyn KVScanIterator>, KVRuntimeError> {
+    async fn range_scan(
+        &self,
+        scan: &KVRangeScan,
+    ) -> Result<Box<dyn KVScanIterator>, KVRuntimeError> {
         let iter = self.get_range_iterator(scan)?;
         todo!()
     }

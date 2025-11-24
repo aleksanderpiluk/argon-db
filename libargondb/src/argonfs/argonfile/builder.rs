@@ -2,24 +2,22 @@ use std::io::Write;
 
 use async_trait::async_trait;
 
-use crate::{
-    argonfile::{
-        block::ArgonfileBlockBuilder,
-        block_identifier::BLOCK_IDENTIFIER_DATA,
-        block_ptr::ArgonfileBlockPointer,
-        checksum::{ArgonfileChecksumStrategy, ArgonfileChecksumStrategyFactory},
-        compression::{ArgonfileCompressionStrategy, ArgonfileCompressionStrategyFactory},
-        config::ArgonfileConfig,
-        error::ArgonfileBuilderError,
-        magic::ArgonfileMagicWriter,
-        row::ArgonfileRowBuilder,
-        stats::ArgonfileStatsBuilder,
-        summary::ArgonfileSummaryBuilder,
-        trailer::ArgonfileTrailerWriter,
-        utils::ArgonfileOffsetCountingWriteWrapper,
-    },
-    kv::{KVSSTableBuilder, mutation::KVMutation},
+use super::{
+    block::ArgonfileBlockBuilder,
+    block_identifier::BLOCK_IDENTIFIER_DATA,
+    block_ptr::ArgonfileBlockPointer,
+    checksum::{ArgonfileChecksumStrategy, ArgonfileChecksumStrategyFactory},
+    compression::{ArgonfileCompressionStrategy, ArgonfileCompressionStrategyFactory},
+    config::ArgonfileConfig,
+    error::ArgonfileBuilderError,
+    magic::ArgonfileMagicWriter,
+    row::ArgonfileRowBuilder,
+    stats::ArgonfileStatsBuilder,
+    summary::ArgonfileSummaryBuilder,
+    trailer::ArgonfileTrailerWriter,
+    utils::ArgonfileOffsetCountingWriteWrapper,
 };
+use crate::kv::{KVSSTableBuilder, mutation::KVMutation};
 
 struct ArgonfileBuilder<'a, W: Write + Send> {
     config: &'a ArgonfileConfig,

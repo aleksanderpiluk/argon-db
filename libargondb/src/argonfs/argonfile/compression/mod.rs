@@ -1,13 +1,17 @@
-use crate::argonfile::{
-    compression::no_compression::ArgonfileNoCompression, config::ArgonfileConfig,
-};
+use std::io::Write;
 
 mod no_compression;
+
+pub use no_compression::ArgonfileNoCompression;
+
+use crate::argonfs::argonfile::config::ArgonfileConfig;
 
 pub trait ArgonfileCompressionStrategy {
     fn compression_type(&self) -> u16;
 
     fn compress(data: &[u8]) -> Box<[u8]>;
+
+    fn decompress<W: Write>(&self, data: &[u8], out: &mut W);
 
     fn clone(&self) -> Self;
 }

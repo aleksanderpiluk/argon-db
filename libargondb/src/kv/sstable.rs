@@ -1,3 +1,4 @@
+use std::{fmt::Debug, mem, path::PathBuf, sync::Arc};
 use std::{fmt::Debug, mem, sync::Arc};
 
 use async_trait::async_trait;
@@ -38,7 +39,7 @@ pub struct KVSSTableSummaryIndex {
 }
 
 impl KVSSTableSummaryIndex {
-    fn get_range_scan_blocks(&self, scan: &KVRangeScan) -> Vec<()> {
+    fn get_range_scan_blocks(&self, scan: &KVRangeScan) -> Vec<KVSSTableBlockPtr> {
         todo!()
     }
 }
@@ -65,14 +66,17 @@ impl KVScannable for KVSSTable {
 
 pub struct KVSSTableScanIter {
     reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>,
-    blocks: Vec<()>,
+    blocks: Vec<KVSSTableBlockPtr>,
     next_block_idx: usize,
     current_block_iter: Option<Box<dyn KVSSTableDataBlockIter + Send + Sync>>,
     current_entry: Option<Box<dyn KVScanIteratorItem + Send + Sync>>,
 }
 
 impl KVSSTableScanIter {
-    async fn new(reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>, blocks: Vec<()>) -> Self {
+    async fn new(
+        reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>,
+        blocks: Vec<KVSSTableBlockPtr>,
+    ) -> Self {
         let mut this = Self {
             reader,
             blocks,

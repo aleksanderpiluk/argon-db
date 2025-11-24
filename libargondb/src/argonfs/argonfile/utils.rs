@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::argonfile::error::ArgonfileWriterError;
+use super::error::ArgonfileWriterError;
 
 pub fn checked_write<W: Write>(w: &mut W, data: &[u8]) -> Result<usize, ArgonfileWriterError> {
     let size = w.write(data)?;

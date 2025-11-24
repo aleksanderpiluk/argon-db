@@ -1,15 +1,19 @@
-use std::io::{self, Write};
+use std::{
+    array::TryFromSliceError,
+    io::{self, Write},
+};
 
 use crate::{
-    argonfile::{
-        block_identifier::BlockIdentifier,
-        block_ptr::ArgonfileBlockPointer,
-        checksum::ArgonfileChecksumStrategy,
-        compression::ArgonfileCompressionStrategy,
-        error::{ArgonfileBuilderError, ArgonfileWriterError},
-        utils::{
-            ArgonfileSizeCountingWriter, ArgonfileWrite, checked_write, inner_writer_error_mapper,
+    argonfs::{
+        argonfile::{
+            block_identifier::BlockIdentifier,
+            block_ptr::ArgonfileBlockPointer,
+            checksum::{ArgonfileChecksumStrategy, ArgonfileChecksumStrategyFactory},
+            compression::ArgonfileCompressionStrategy,
+            error::{ArgonfileBuilderError, ArgonfileWriterError},
+            utils::{ArgonfileSizeCountingWriter, ArgonfileWrite, checked_write},
         },
+        buffer_allocator::BufferAllocator,
     },
     ensure,
 };
@@ -104,6 +108,42 @@ impl ArgonfileWrite for ArgonfileBlockBuilder {
     }
 }
 
+pub struct ArgonfileBlockReader<C: ArgonfileCompressionStrategy> {
+    compression: C,
+}
+
+impl<C: ArgonfileCompressionStrategy> ArgonfileBlockReader<C> {
+    pub fn new(compression: C) -> Self {
+        Self { compression }
+    }
+}
+
+impl<C: ArgonfileCompressionStrategy> ArgonfileBlockReader<C> {
+    pub fn read(&self, buf: &[u8], mut allocator: impl BufferAllocator) {
+        let header_bytes = <[u8; 24]>::try_from(&buf[0..24]).unwrap();
+        let header = BlockHeaderReader::read(&header_bytes).unwrap();
+
+        let compressed_buffer_end = 24 + header.data_compressed_size as usize;
+        let compressed_buffer = &buf[24..compressed_buffer_end];
+
+        let checksum_buffer_end = compressed_buffer_end + header.checksum_size as usize;
+        let checksum = &buf[compressed_buffer_end..checksum_buffer_end];
+
+        let mut out_buffer = allocator.alloc(header.data_uncompressed_size as _);
+        self.compression
+            .decompress(compressed_buffer, &mut out_buffer);
+
+        let checksum_stategy =
+            ArgonfileChecksumStrategyFactory::from_checksum_type(header.checksum_type);
+        assert!(
+            checksum_stategy
+                .verify_checksum(&mut out_buffer, checksum)
+                .unwrap()
+                == true
+        );
+    }
+}
+
 pub enum ArgonfileBlockWriterError {
     IOError(io::Error),
     PartialWrite(usize),
@@ -136,5 +176,33 @@ impl BlockHeaderWriter {
         writer.write(&u32::to_le_bytes(checksum_size))?;
 
         Ok(writer.size())
+    }
+}
+
+pub struct BlockHeader {
+    pub block_identifier: BlockIdentifier,
+    pub data_compressed_size: u32,
+    pub data_uncompressed_size: u32,
+    pub checksum_type: u8,
+    pub checksum_size: u32,
+}
+
+pub struct BlockHeaderReader;
+
+impl BlockHeaderReader {
+    pub fn read(buf: &[u8; 24]) -> Result<BlockHeader, TryFromSliceError> {
+        let block_identifier: [u8; 8] = <[u8; 8]>::try_from(&buf[0..8])?;
+        let data_compressed_size = u32::from_le_bytes(<[u8; 4]>::try_from(&buf[8..12])?);
+        let data_uncompressed_size = u32::from_le_bytes(<[u8; 4]>::try_from(&buf[12..16])?);
+        let checksum_type = u8::from_le_bytes(<[u8; 1]>::try_from(&buf[16..17])?);
+        let checksum_size = u32::from_le_bytes(<[u8; 4]>::try_from(&buf[20..24])?);
+
+        Ok(BlockHeader {
+            block_identifier,
+            data_compressed_size,
+            data_uncompressed_size,
+            checksum_type,
+            checksum_size,
+        })
     }
 }

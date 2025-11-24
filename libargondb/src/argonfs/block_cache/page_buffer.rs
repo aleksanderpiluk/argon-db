@@ -6,10 +6,17 @@ use std::{
     task::Waker,
 };
 
+<<<<<<< HEAD:libargondb/src/block_cache/page_buffer.rs
 use crate::block_cache::{
     block_cache::{BlockCacheConfig, BlockCacheTag},
+=======
+use crate::argonfs::block_cache::block_view::BlockView;
+
+use super::{
+    block_cache::BlockCacheConfig,
+>>>>>>> ae412a2 (commit):libargondb/src/argonfs/block_cache/page_buffer.rs
     block_lock::{BlockLock, TryExclusiveLockError},
-    freelist::FreelistNext,
+    page::{PageHeader, PageState},
 };
 
 pub struct PageBuffer {
@@ -22,15 +29,15 @@ pub struct PageBuffer {
 impl PageBuffer {
     pub fn new(config: &BlockCacheConfig) -> Self {
         let alignment = size_of::<libc::max_align_t>();
-        if config.block_size % alignment != 0 {
+        if config.page_size % alignment != 0 {
             panic!(
                 "block size not aligned - block_size: {}, max_align_t: {}",
-                config.block_size, alignment
+                config.page_size, alignment
             );
         }
 
-        let blocks_total = config.blocks_total;
-        let block_size = config.block_size;
+        let blocks_total = config.pages_total;
+        let block_size = config.page_size;
 
         let (headers_layout, blocks_layout) = Self::get_layouts(blocks_total, block_size);
 
@@ -49,7 +56,12 @@ impl PageBuffer {
                 *header = PageHeader {
                     lock: BlockLock::new(),
                     data: blocks.add(i * block_size),
+<<<<<<< HEAD:libargondb/src/block_cache/page_buffer.rs
                     state: PageState::Free {
+=======
+                    buf_len: block_size,
+                    state: PageState::FreelistItem {
+>>>>>>> ae412a2 (commit):libargondb/src/argonfs/block_cache/page_buffer.rs
                         next_free: if i + 1 < blocks_total {
                             Some(headers.add(i + 1))
                         } else {
@@ -99,6 +111,7 @@ impl Drop for PageBuffer {
     }
 }
 
+<<<<<<< HEAD:libargondb/src/block_cache/page_buffer.rs
 pub struct PageHeader {
     lock: BlockLock,
     data: NonNull<u8>,
@@ -187,6 +200,8 @@ enum PageState {
     },
 }
 
+=======
+>>>>>>> ae412a2 (commit):libargondb/src/argonfs/block_cache/page_buffer.rs
 /**
  * Guards write access to the block(both header and data). When dropped, drops exclusive lock obtained on block.
  */
@@ -219,6 +234,10 @@ impl BlockExclusiveGuard {
             }
         }
     }
+
+    pub fn to_shared(self) -> BlockSharedGuard {
+        todo!()
+    }
 }
 
 impl Deref for BlockExclusiveGuard {
@@ -243,12 +262,18 @@ impl Drop for BlockExclusiveGuard {
     }
 }
 
+unsafe impl Send for BlockExclusiveGuard {}
+unsafe impl Sync for BlockExclusiveGuard {}
+
 /**
  * Guards read access to the block(both header and data). When dropped, drops shared lock obtained on block.
  */
 pub struct BlockSharedGuard(NonNull<PageHeader>);
+<<<<<<< HEAD:libargondb/src/block_cache/page_buffer.rs
 
 unsafe impl Sync for BlockSharedGuard {}
+=======
+>>>>>>> ae412a2 (commit):libargondb/src/argonfs/block_cache/page_buffer.rs
 
 impl BlockSharedGuard {
     pub fn header(&self) -> NonNull<PageHeader> {
@@ -273,6 +298,18 @@ impl BlockSharedGuard {
             }
         }
     }
+
+    pub fn to_exclusive(self) -> BlockExclusiveGuard {
+        todo!()
+    }
+
+    pub fn try_to_exclusive(self) -> Result<BlockExclusiveGuard, ()> {
+        todo!()
+    }
+
+    pub fn to_boxed_view(self) -> Box<BlockView> {
+        todo!()
+    }
 }
 
 impl Deref for BlockSharedGuard {
@@ -290,3 +327,6 @@ impl Drop for BlockSharedGuard {
         header.lock.drop_shared_lock();
     }
 }
+
+unsafe impl Send for BlockSharedGuard {}
+unsafe impl Sync for BlockSharedGuard {}

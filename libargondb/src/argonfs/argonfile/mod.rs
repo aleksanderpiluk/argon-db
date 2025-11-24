@@ -1,3 +1,4 @@
+mod argonfile_format_reader;
 mod block;
 mod block_identifier;
 mod block_ptr;
@@ -7,18 +8,21 @@ mod compression;
 mod config;
 mod error;
 mod magic;
-mod reader;
 mod row;
 mod stats;
 mod summary;
 mod trailer;
 mod utils;
 
+<<<<<<< HEAD:libargondb/src/argonfile/mod.rs
 // pub struct ArgonfileReader {
 //     compression: ArgonfileCompressionType,
 // }
 
 pub use reader::ArgonfileReader;
+=======
+pub use argonfile_format_reader::ArgonfileFormatReader;
+>>>>>>> ae412a2 (commit):libargondb/src/argonfs/argonfile/mod.rs
 
 pub enum ArgonfileCompressionType {
     None,

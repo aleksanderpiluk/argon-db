@@ -1,18 +1,17 @@
 //! Row stores a group of mutations sharing same primary key.
 
-use std::io::{self, Write};
-
-use crate::{
-    argonfile::{
-        error::{ArgonfileBuilderError, ArgonfileWriterError},
-        utils::{
-            ArgonfileOffsetCountingWriteWrapper, ArgonfileSizeCountingWriter, ArgonfileWrite,
-            checked_write, inner_writer_error_mapper,
-        },
+use super::{
+    error::{ArgonfileBuilderError, ArgonfileWriterError},
+    utils::{
+        ArgonfileOffsetCountingWriteWrapper, ArgonfileSizeCountingWriter, ArgonfileWrite,
+        checked_write, inner_writer_error_mapper,
     },
+};
+use crate::{
     ensure,
     kv::{mutation::KVMutation, primary_key::KVPrimaryKeyUtils},
 };
+use std::io::{self, Write};
 
 pub struct ArgonfileRowBuilder {
     primary_key: Box<[u8]>,

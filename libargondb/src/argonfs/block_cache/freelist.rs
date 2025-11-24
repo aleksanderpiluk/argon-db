@@ -6,10 +6,18 @@ use std::{
     },
 };
 
+<<<<<<< HEAD:libargondb/src/block_cache/freelist.rs
 use crate::block_cache::{
     block_lock::TryExclusiveLockError,
     block_map::BlockMap,
     page_buffer::{BlockExclusiveGuard, PageBuffer, PageHeader},
+=======
+use super::{
+    block_lock::TryExclusiveLockError,
+    block_map::BlockMap,
+    page::PageHeader,
+    page_buffer::{BlockExclusiveGuard, PageBuffer},
+>>>>>>> ae412a2 (commit):libargondb/src/argonfs/block_cache/freelist.rs
 };
 
 pub type FreelistNext = Option<NonNull<PageHeader>>;
@@ -32,6 +40,7 @@ impl Freelist {
      */
     pub fn get_free_page(&self, buffer: &PageBuffer, map: &BlockMap) -> BlockExclusiveGuard {
         if let Some(block) = self.pop() {
+            assert!(block.is_free());
             return block;
         }
 
@@ -40,13 +49,15 @@ impl Freelist {
 
     pub fn push_free(&self, mut block: BlockExclusiveGuard) {
         assert!(block.is_free());
-        assert_eq!(block.next_free(), None);
 
         let mut next_free = self.next_free.lock().unwrap();
 
-        block.set_next_free(*next_free);
+        block.set_state_freelist_item(*next_free);
+        assert!(block.is_freelist_item());
+
         *next_free = Some(block.header());
 
+        // First drop block exclusive lock, then unlock freelist
         drop(block);
         drop(next_free);
     }
@@ -60,10 +71,11 @@ impl Freelist {
         if let Some(header) = *next_free {
             // Having exclusive access to next_free pointer block must remain in free state
             let mut block = unsafe { BlockExclusiveGuard::acquire_for(header) };
-            assert!(block.is_free());
+            assert!(block.is_freelist_item());
 
-            *next_free = block.clear_next_free();
-            assert_eq!(block.next_free(), None);
+            *next_free = block.set_state_free_from_freelist_item();
+
+            assert!(block.is_free());
 
             Some(block)
         } else {
@@ -77,15 +89,16 @@ impl Freelist {
                 continue;
             };
 
-            assert!(block.is_loaded());
-            assert_eq!(block.next_free(), None);
-            assert!(block.tag().is_some());
+            assert!(block.is_loaded_block());
             assert_eq!(block.usage_count(), 0);
 
-            match map.try_free_assigned_block(block) {
-                Ok(block) => return block,
+            match map.try_free_loaded_block(block) {
+                Ok((block, next_overflow_page)) => {
+                    self.free_overflow_pages(next_overflow_page);
+                    return block;
+                }
                 Err(block) => {
-                    // Block is needed so we should chose other one
+                    // This would deadlock, so drop lock on this page and try to take another one
                     drop(block);
                     continue;
                 }
@@ -93,6 +106,10 @@ impl Freelist {
         }
     }
 
+<<<<<<< HEAD:libargondb/src/block_cache/freelist.rs
+=======
+    /** Performs single "tick" of clock-sweep algorithm, if guard is returned, page should be in "LoadedBlock" state and with usage_count set to 0. */
+>>>>>>> ae412a2 (commit):libargondb/src/argonfs/block_cache/freelist.rs
     fn clock_sweep_tick(&self, buffer: &PageBuffer) -> Option<BlockExclusiveGuard> {
         let mut victim_idx = self.clock_sweep_next_victim.fetch_add(1, Ordering::Relaxed);
         if victim_idx >= buffer.pages_total_count() {
@@ -131,7 +148,7 @@ impl Freelist {
         }
 
         if let Some(mut block) = guard {
-            if block.is_loaded() {
+            if block.is_loaded_block() {
                 let usage_count = block.usage_count_take();
 
                 if usage_count == 0 { Some(block) } else { None }
@@ -140,6 +157,18 @@ impl Freelist {
             }
         } else {
             None
+        }
+    }
+
+    fn free_overflow_pages(&self, next_overflow_page: Option<NonNull<PageHeader>>) {
+        let mut next_overflow_page = next_overflow_page;
+        while let Some(header) = next_overflow_page {
+            let mut page = unsafe { BlockExclusiveGuard::acquire_for(header) };
+            assert!(page.is_overflow_page());
+
+            next_overflow_page = page.set_state_free_from_overflow_page();
+
+            self.push_free(page);
         }
     }
 }

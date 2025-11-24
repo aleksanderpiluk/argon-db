@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::argonfile::{
+use super::{
     error::ArgonfileWriterError,
     utils::{ArgonfileWrite, checked_write},
 };

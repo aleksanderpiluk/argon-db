@@ -3,7 +3,7 @@ use std::io::Write;
 use bloomfilter::Bloom;
 
 use super::block_ptr::ArgonfileBlockPointer;
-use crate::{argonfile::utils::ArgonfileWrite, kv::mutation::KVMutation};
+use crate::{argonfs::argonfile::utils::ArgonfileWrite, kv::mutation::KVMutation};
 
 pub struct ArgonfileStatsBuilder {
     bloom: Bloom<[u8]>,

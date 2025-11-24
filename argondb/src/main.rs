@@ -1,3 +1,4 @@
+mod db_bootstrap;
 // use libargonrt::{
 //     argonrt_setup,
 //     modules::{basic_connector::BasicConnector, storage::DefaultStorageModule},
@@ -13,8 +14,17 @@
 use std::{path::Path, sync::Arc};
 
 use libargondb::{
+<<<<<<< HEAD
     ArgonfileReader, BlockCache, CachedSSTableReader,
     kv::{KVRangeScan, KVSSTable, KVScanExecutor, KVTable, column_type::ColumnTypeCode},
+=======
+    ArgonFsFactory, ArgonfileReader, BlockCache, BlockCacheConfig, CachedSSTableReader,
+    kv::{
+        KVRangeScan, KVSSTable, KVScanExecutor, KVTable,
+        column_type::ColumnTypeCode,
+        schema::{KVColumnSchema, KVTableSchema},
+    },
+>>>>>>> ae412a2 (commit)
     ops::{
         create_table::{CreateTableOp, CreateTableOpColumn},
         insert::{InsertOp, InsertOpValue},
@@ -23,6 +33,7 @@ use libargondb::{
 };
 
 fn main() {
+<<<<<<< HEAD
     let table: KVTable = todo!();
 
     let block_cache: Arc<BlockCache> = todo!();
@@ -33,6 +44,20 @@ fn main() {
         .map(|reader| KVSSTable::from_reader(reader))
         .collect();
 
+=======
+    let argonfs_factory = ArgonFsFactory::new();
+
+    db_bootstrap();
+
+    let sstable_file_paths: Vec<Path> = vec![];
+    let sstables: Vec<KVSSTable> = sstable_file_paths
+        .iter()
+        .map(|path| argonfs_factory.open_sstable(path))
+        // .map(|path| CachedSSTableReader::new(block_cache.clone(), ArgonfileReader::new(path)))
+        .map(|reader| KVSSTable::from_reader(reader))
+        .collect();
+
+>>>>>>> ae412a2 (commit)
     todo!("Add mutations");
     let x = KVScanExecutor::execute(&table, KVRangeScan::new(from, to, columns));
 }

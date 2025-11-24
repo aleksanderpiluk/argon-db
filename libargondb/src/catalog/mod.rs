@@ -1,3 +1,8 @@
+mod catalog;
+mod catalog_state;
+
+pub use catalog::Catalog;
+
 // struct DatabaseDeclaration {
 //     database_name: String,
 //     tables: Box<[TableDeclaration]>,

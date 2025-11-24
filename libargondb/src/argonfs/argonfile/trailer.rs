@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use super::block_ptr::{ArgonfileBlockPointer, ArgonfileBlockPointerWriter};
-use crate::argonfile::{
+use super::{
     error::ArgonfileWriterError,
     utils::{
         ArgonfileSizeCountingWriter, ArgonfileWrite, checked_write, inner_writer_error_mapper,
