@@ -14,15 +14,11 @@ mod summary;
 mod trailer;
 mod utils;
 
-<<<<<<< HEAD:libargondb/src/argonfile/mod.rs
 // pub struct ArgonfileReader {
 //     compression: ArgonfileCompressionType,
 // }
 
-pub use reader::ArgonfileReader;
-=======
 pub use argonfile_format_reader::ArgonfileFormatReader;
->>>>>>> ae412a2 (commit):libargondb/src/argonfs/argonfile/mod.rs
 
 pub enum ArgonfileCompressionType {
     None,

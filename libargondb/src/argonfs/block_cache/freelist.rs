@@ -6,18 +6,11 @@ use std::{
     },
 };
 
-<<<<<<< HEAD:libargondb/src/block_cache/freelist.rs
-use crate::block_cache::{
-    block_lock::TryExclusiveLockError,
-    block_map::BlockMap,
-    page_buffer::{BlockExclusiveGuard, PageBuffer, PageHeader},
-=======
 use super::{
     block_lock::TryExclusiveLockError,
     block_map::BlockMap,
     page::PageHeader,
     page_buffer::{BlockExclusiveGuard, PageBuffer},
->>>>>>> ae412a2 (commit):libargondb/src/argonfs/block_cache/freelist.rs
 };
 
 pub type FreelistNext = Option<NonNull<PageHeader>>;
@@ -106,10 +99,7 @@ impl Freelist {
         }
     }
 
-<<<<<<< HEAD:libargondb/src/block_cache/freelist.rs
-=======
     /** Performs single "tick" of clock-sweep algorithm, if guard is returned, page should be in "LoadedBlock" state and with usage_count set to 0. */
->>>>>>> ae412a2 (commit):libargondb/src/argonfs/block_cache/freelist.rs
     fn clock_sweep_tick(&self, buffer: &PageBuffer) -> Option<BlockExclusiveGuard> {
         let mut victim_idx = self.clock_sweep_next_victim.fetch_add(1, Ordering::Relaxed);
         if victim_idx >= buffer.pages_total_count() {

@@ -212,7 +212,7 @@ impl<'a> PrimaryKeyBuilder<'a> {
     }
 }
 
-pub enum PrimaryKeyMarker {
+pub enum KVPrimaryKeyMarker {
     Start,
     End,
     Key(Box<[u8]>),
@@ -223,32 +223,32 @@ struct PrimaryKeyMarkerComparator;
 impl PrimaryKeyMarkerComparator {
     pub fn cmp(
         schema: &KVPrimaryKeySchema,
-        this: &PrimaryKeyMarker,
-        that: &PrimaryKeyMarker,
+        this: &KVPrimaryKeyMarker,
+        that: &KVPrimaryKeyMarker,
     ) -> Result<Ordering, KVRuntimeError> {
-        if let PrimaryKeyMarker::Start = this {
-            if let PrimaryKeyMarker::Start = that {
+        if let KVPrimaryKeyMarker::Start = this {
+            if let KVPrimaryKeyMarker::Start = that {
                 return Ok(Ordering::Equal);
             } else {
                 return Ok(Ordering::Less);
             }
         }
 
-        if let PrimaryKeyMarker::End = this {
-            if let PrimaryKeyMarker::End = that {
+        if let KVPrimaryKeyMarker::End = this {
+            if let KVPrimaryKeyMarker::End = that {
                 return Ok(Ordering::Equal);
             } else {
                 return Ok(Ordering::Greater);
             }
         }
 
-        if let PrimaryKeyMarker::Key(this_key) = this {
+        if let KVPrimaryKeyMarker::Key(this_key) = this {
             return match that {
-                PrimaryKeyMarker::Key(that_key) => {
+                KVPrimaryKeyMarker::Key(that_key) => {
                     KVPrimaryKeyComparator::cmp(schema, &this_key, &that_key)
                 }
-                PrimaryKeyMarker::Start => Ok(Ordering::Greater),
-                PrimaryKeyMarker::End => Ok(Ordering::Less),
+                KVPrimaryKeyMarker::Start => Ok(Ordering::Greater),
+                KVPrimaryKeyMarker::End => Ok(Ordering::Less),
             };
         }
 

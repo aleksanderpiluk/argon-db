@@ -15,14 +15,14 @@ impl Catalog {
     }
 
     pub fn add_table(&self, table_name: String, table: Arc<KVTable>) {
-        self.state.mutate(move |current_state| {
+        self.state.mutate_blocking(move |current_state| {
             let new_state = current_state.add_table(table_name, table);
 
             Some(new_state)
         });
     }
 
-    pub fn lookup_table_by_name(&self, table_name: &String) -> Option<Arc<KVTable>> {
+    pub fn lookup_table_by_name(&self, table_name: &str) -> Option<Arc<KVTable>> {
         let catalog_state = self.state.load();
 
         catalog_state.lookup_table_by_name(table_name)

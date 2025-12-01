@@ -1,14 +1,12 @@
 use std::{sync::Arc, task::Poll};
 
 use async_trait::async_trait;
-use futures::FutureExt;
 
 use crate::{
     argonfs::{
         block_cache::{BlockCache, BlockSharedGuard, BlockTag},
-        block_cache_buffer_allocator::BlockCacheAllocator,
-        io_subsystem::BoxIOSubsystem,
-        sstable_format_reader::{BoxSSTableFormatReader, SSTableFormatReader},
+        core::BoxSSTableFormatReader,
+        io_subsystem::{FsReadRequest, IOSubsystem},
     },
     kv::{
         KVSSTableBlockPtr, KVSSTableDataBlockIter, KVSSTableReader, KVSSTableStats,
@@ -19,14 +17,14 @@ use crate::{
 pub struct CachedSSTableReader {
     sstable_id: u64,
     block_cache: Arc<BlockCache>,
-    io_subsystem: Arc<BoxIOSubsystem>,
+    io_subsystem: Arc<IOSubsystem>,
     format_reader: Arc<BoxSSTableFormatReader>,
 }
 
 impl CachedSSTableReader {
     pub fn new(
         block_cache: Arc<BlockCache>,
-        io_subsystem: Arc<BoxIOSubsystem>,
+        io_subsystem: Arc<IOSubsystem>,
         format_reader: Arc<BoxSSTableFormatReader>,
     ) -> Self {
         Self {
@@ -62,8 +60,8 @@ impl KVSSTableReader for CachedSSTableReader {
 
             BlockReadyFuture::new(
                 self.block_cache.clone(),
-                self.io_subsystem.clone(),
                 self.format_reader.clone(),
+                self.io_subsystem.clone(),
                 cache_tag,
                 *ptr,
             )
@@ -82,8 +80,8 @@ impl KVSSTableDataBlockIter for CachedReaderIter {
 
 struct BlockReadyFuture {
     block_cache: Arc<BlockCache>,
-    io_subsystem: Arc<BoxIOSubsystem>,
-    inner_reader: Arc<BoxSSTableFormatReader>,
+    format_reader: Arc<BoxSSTableFormatReader>,
+    io_subsystem: Arc<IOSubsystem>,
     block_tag: BlockTag,
     ptr: KVSSTableBlockPtr,
 }
@@ -91,15 +89,15 @@ struct BlockReadyFuture {
 impl BlockReadyFuture {
     fn new(
         block_cache: Arc<BlockCache>,
-        io_subsystem: Arc<BoxIOSubsystem>,
         format_reader: Arc<BoxSSTableFormatReader>,
+        io_subsystem: Arc<IOSubsystem>,
         block_tag: BlockTag,
         ptr: KVSSTableBlockPtr,
     ) -> Self {
         Self {
             block_cache,
+            format_reader,
             io_subsystem,
-            inner_reader: format_reader,
             block_tag,
             ptr,
         }
@@ -128,25 +126,16 @@ impl Future for BlockReadyFuture {
         if !is_dispatched {
             block.set_read_dispatched_flag();
 
-            let block_cache = self.block_cache.clone();
-            let inner_reader = self.inner_reader.clone();
+            let sstable_format_reader = self.format_reader.clone();
             let block_tag = *block.block_tag();
-            let ptr = self.ptr;
+            let sstable_ptr = self.ptr;
 
-            self.io_subsystem.pool_dispatch_task(
-                async move {
-                    let mut block_alloc = BlockCacheAllocator::new(block_cache.clone(), block_tag);
-
-                    let block_size = inner_reader.load_data_block(ptr, &mut block_alloc).await;
-
-                    let mut block = block_alloc.into_block();
-                    let wakers = block.set_state_loaded_block(block_size);
-                    for waker in wakers {
-                        waker.wake();
-                    }
-                }
-                .boxed(),
-            );
+            let read_request = FsReadRequest {
+                block_tag,
+                sstable_format_reader,
+                sstable_ptr,
+            };
+            self.io_subsystem.fs_read_request_queue().push(read_request);
         }
 
         Poll::Pending

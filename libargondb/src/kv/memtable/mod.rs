@@ -4,7 +4,7 @@ use crate::kv::{
     error::KVRuntimeError,
     memtable::lock::MemtableLock,
     mutation::{KVMutation, MutationComparator, MutationUtils, StructuredMutation},
-    primary_key::{KVPrimaryKeySchema, PrimaryKeyMarker},
+    primary_key::{KVPrimaryKeyMarker, KVPrimaryKeySchema},
     scan::{KVRangeScan, KVScanIterator, KVScannable},
 };
 use async_trait::async_trait;
@@ -89,20 +89,20 @@ impl Memtable {
         let to = scan.to();
 
         match (from, to) {
-            (PrimaryKeyMarker::Start, PrimaryKeyMarker::End) => {
+            (KVPrimaryKeyMarker::Start, KVPrimaryKeyMarker::End) => {
                 Ok(Box::new(self.inner.range(..).into_iter()))
             }
-            (PrimaryKeyMarker::Start, PrimaryKeyMarker::Key(pk)) => Ok(Box::new(
+            (KVPrimaryKeyMarker::Start, KVPrimaryKeyMarker::Key(pk)) => Ok(Box::new(
                 self.inner
                     .range(..MemtableMutation::end(self.primary_key_schema.clone(), pk.clone()))
                     .into_iter(),
             )),
-            (PrimaryKeyMarker::Key(pk), PrimaryKeyMarker::End) => Ok(Box::new(
+            (KVPrimaryKeyMarker::Key(pk), KVPrimaryKeyMarker::End) => Ok(Box::new(
                 self.inner
                     .range(MemtableMutation::start(self.primary_key_schema.clone(), pk.clone())..)
                     .into_iter(),
             )),
-            (PrimaryKeyMarker::Key(pk_from), PrimaryKeyMarker::Key(pk_to)) => Ok(Box::new(
+            (KVPrimaryKeyMarker::Key(pk_from), KVPrimaryKeyMarker::Key(pk_to)) => Ok(Box::new(
                 self.inner
                     .range(
                         MemtableMutation::start(self.primary_key_schema.clone(), pk_from.clone())

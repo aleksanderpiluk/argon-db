@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use crate::kv::{
     error::KVRuntimeError,
     mutation::{KVMutation, MutationComparator},
-    primary_key::{KVPrimaryKeySchema, PrimaryKeyMarker},
+    primary_key::{KVPrimaryKeyMarker, KVPrimaryKeySchema},
     table_state::KVTableState,
 };
 
@@ -38,21 +38,21 @@ pub trait KVScanIteratorItem {
 }
 
 pub struct KVRangeScan {
-    from: PrimaryKeyMarker,
-    to: PrimaryKeyMarker,
-    columns: ColumnFilter,
+    from: KVPrimaryKeyMarker,
+    to: KVPrimaryKeyMarker,
+    columns: KVColumnFilter,
 }
 
 impl KVRangeScan {
-    pub fn new(from: PrimaryKeyMarker, to: PrimaryKeyMarker, columns: ColumnFilter) -> Self {
+    pub fn new(from: KVPrimaryKeyMarker, to: KVPrimaryKeyMarker, columns: KVColumnFilter) -> Self {
         Self { from, to, columns }
     }
 
-    pub fn from(&self) -> &PrimaryKeyMarker {
+    pub fn from(&self) -> &KVPrimaryKeyMarker {
         &self.from
     }
 
-    pub fn to(&self) -> &PrimaryKeyMarker {
+    pub fn to(&self) -> &KVPrimaryKeyMarker {
         &self.to
     }
 }
@@ -66,7 +66,7 @@ impl KVScanOp for KVRangeScan {
     }
 }
 
-pub enum ColumnFilter {
+pub enum KVColumnFilter {
     All,
 }
 

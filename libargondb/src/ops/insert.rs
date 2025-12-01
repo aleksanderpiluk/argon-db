@@ -24,11 +24,12 @@ pub struct InsertOpValue {
 
 impl InsertOp {
     pub async fn execute(&self, table: &KVTable) -> Result<(), InsertOpError> {
-        let table_state = table.load_state();
+        // let table_state = table.load_state();
 
-        let (prepared_values, primary_key) = self.prepare(&table_state)?;
-        let mutations = self.prepare_mutations(&prepared_values, &primary_key)?;
-        self.execute_insertions(table, &mutations).await;
+        todo!();
+        // let (prepared_values, primary_key) = self.prepare(&table_state)?;
+        // let mutations = self.prepare_mutations(&prepared_values, &primary_key)?;
+        // self.execute_insertions(table, &mutations).await;
 
         Ok(())
     }
@@ -99,21 +100,22 @@ impl InsertOp {
 
     async fn execute_insertions(&self, table: &KVTable, mutations: &Vec<StructuredMutation>) {
         // TODO: Generally speaking, this code handling table state and getting new state after flush could be handled in a better way
-        let mut table_state = table.load_state();
-        for mutation in mutations {
-            loop {
-                match table_state.current_memtable.insert_mutation(&mutation) {
-                    Ok(_) => {
-                        break;
-                    }
-                    Err(MemtableInsertError::SizeExceeded)
-                    | Err(MemtableInsertError::ReadOnlyMode) => {
-                        table.flush_current_memtable().await;
-                        table_state = table.load_state();
-                    }
-                }
-            }
-        }
+        table.insert_mutations(mutations);
+        // let mut table_state = table.load_state();
+        // for mutation in mutations {
+        //     loop {
+        //         match table_state.current_memtable.insert_mutation(&mutation) {
+        //             Ok(_) => {
+        //                 break;
+        //             }
+        //             Err(MemtableInsertError::SizeExceeded)
+        //             | Err(MemtableInsertError::ReadOnlyMode) => {
+        //                 table.flush_current_memtable().await;
+        //                 table_state = table.load_state();
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
 

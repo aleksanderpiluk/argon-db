@@ -65,7 +65,7 @@ impl CreateTableOp {
 
         let config = KVConfig::default();
 
-        Ok(Arc::new(KVTable::create(config, columns_schema)))
+        Ok(Arc::new(KVTable::create(config, columns_schema, vec![])))
     }
 }
 

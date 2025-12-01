@@ -1,17 +1,19 @@
 use crate::kv::{
-    ColumnFilter, KVRangeScan, KVScanExecutor, KVTable, primary_key::PrimaryKeyMarker,
+    KVColumnFilter, KVRangeScan, KVScanExecutor, KVTable, primary_key::KVPrimaryKeyMarker,
 };
 
 pub struct SelectOp {}
 
 impl SelectOp {
     pub async fn execute(&self, table: &KVTable) {
-        let from = PrimaryKeyMarker::Start;
-        let to = PrimaryKeyMarker::End;
-        let scan_params = KVRangeScan::new(from, to, ColumnFilter::All);
+        let from = KVPrimaryKeyMarker::Start;
+        let to = KVPrimaryKeyMarker::End;
+        let scan_params = KVRangeScan::new(from, to, KVColumnFilter::All);
 
-        let table_state = table.load_state();
-        KVScanExecutor::execute(&table_state, scan_params).unwrap();
+        table.scan(scan_params);
+        todo!()
+        // let table_state = table.load_state();
+        // KVScanExecutor::execute(&table_state, scan_params).unwrap();
     }
 }
 

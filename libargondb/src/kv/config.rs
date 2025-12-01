@@ -1,3 +1,4 @@
+#[derive(Debug, Clone)]
 pub struct KVConfig {
     pub memtable_size: usize, // TODO:
     pub mutation_max_size: usize,

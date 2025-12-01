@@ -1,4 +1,3 @@
-use std::{fmt::Debug, mem, path::PathBuf, sync::Arc};
 use std::{fmt::Debug, mem, sync::Arc};
 
 use async_trait::async_trait;
@@ -12,13 +11,13 @@ use crate::kv::{
 use super::scan::KVScannable;
 
 pub struct KVSSTable {
-    reader: Box<dyn KVSSTableReader + Send + Sync>,
+    reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>,
     summary_index: KVSSTableSummaryIndex,
     stats: KVSSTableStats,
 }
 
 impl KVSSTable {
-    pub async fn from_reader(reader: Box<dyn KVSSTableReader + Send + Sync>) -> Self {
+    pub async fn from_reader(reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>) -> Self {
         let (stats, summary_index) = reader.read_stats_and_index().await;
 
         Self {
@@ -26,6 +25,12 @@ impl KVSSTable {
             summary_index,
             stats,
         }
+    }
+}
+
+impl Debug for KVSSTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KVSSTable").finish()
     }
 }
 

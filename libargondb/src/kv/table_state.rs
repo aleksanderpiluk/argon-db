@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::kv::{memtable::Memtable, scan::KVScannable, schema::KVTableSchema};
+use crate::kv::{KVSSTable, memtable::Memtable, scan::KVScannable, schema::KVTableSchema};
 
 #[derive(Clone, Debug)]
 pub struct KVTableState {
@@ -8,15 +8,21 @@ pub struct KVTableState {
     pub columns_schema: KVTableSchema,
     pub read_memtables: Vec<Arc<Memtable>>,
     pub current_memtable: Arc<Memtable>,
+    pub sstables: Vec<Arc<KVSSTable>>,
 }
 
 impl KVTableState {
-    pub fn for_new_table(columns_schema: KVTableSchema, memtable: Arc<Memtable>) -> Self {
+    pub fn for_new_table(
+        columns_schema: KVTableSchema,
+        memtable: Arc<Memtable>,
+        sstables: Vec<Arc<KVSSTable>>,
+    ) -> Self {
         Self {
             flush_queue: (),
             columns_schema,
             read_memtables: vec![],
             current_memtable: memtable,
+            sstables,
         }
     }
 

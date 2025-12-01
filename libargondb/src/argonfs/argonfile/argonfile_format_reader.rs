@@ -1,46 +1,51 @@
-use std::{path::Path, sync::Arc};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
-use async_trait::async_trait;
 use bytes::Buf;
 
 use crate::{
     argonfs::{
-        argonfile::{
-            block::{ArgonfileBlockReader, BlockHeaderReader},
-            compression::ArgonfileNoCompression,
-        },
-        buffer_allocator::BoxBufferAllocator,
-        io_subsystem::{BoxIOSubsystem, IOFileReaderRequest},
-        sstable_format_reader::SSTableFormatReader,
+        argonfile::{block::ArgonfileBlockReader, compression::ArgonfileNoCompression},
+        core::{BufferAllocator, SSTableFormatReader},
+        io_subsystem::{IOFileReaderRequest, IOSubsystem},
     },
     kv::{KVSSTableBlockPtr, KVSSTableDataBlockIter},
 };
 
 pub struct ArgonfileFormatReader {
-    io_subsystem: Arc<BoxIOSubsystem>,
+    io_subsystem: Arc<IOSubsystem>,
+    file_path: PathBuf,
 }
 
 impl ArgonfileFormatReader {
-    pub fn new(p: impl AsRef<Path>) -> Self {
-        todo!()
+    pub fn new(io_subsystem: Arc<IOSubsystem>, p: impl AsRef<Path>) -> Self {
+        let file_path = PathBuf::from(p.as_ref());
+
+        Self {
+            io_subsystem,
+            file_path,
+        }
     }
 }
 
-#[async_trait]
 impl SSTableFormatReader for ArgonfileFormatReader {
-    async fn load_data_block(
+    fn load_data_block(
         &self,
-        ptr: KVSSTableBlockPtr,
-        allocator: BoxBufferAllocator,
+        block_ptr: KVSSTableBlockPtr,
+        allocator: &mut dyn BufferAllocator,
     ) -> usize {
+        let io_read_request = IOFileReaderRequest {
+            path: self.file_path.clone(),
+            offset: block_ptr.offset(),
+            size: block_ptr.on_disk_size() as _,
+        };
+
         let read_buffer: Box<dyn AsRef<[u8]> + 'static> = self
             .io_subsystem
-            .read(IOFileReaderRequest {
-                path: todo!(),
-                offset: ptr.offset(),
-                size: ptr.on_disk_size() as _,
-            })
-            .await
+            .platform_io_adapter()
+            .read(io_read_request)
             .unwrap();
 
         let buf: &[u8] = read_buffer.as_ref().as_ref();

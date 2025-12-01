@@ -2,8 +2,11 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::{
     kv::{
+        KVSSTable, KVScanExecutor,
         config::KVConfig,
         factory::{self, KVFactory},
+        mutation::StructuredMutation,
+        scan::KVScanOp,
         schema::KVTableSchema,
         table_state::KVTableState,
     },
@@ -17,11 +20,15 @@ pub struct KVTable {
 }
 
 impl KVTable {
-    pub fn create(config: KVConfig, columns_schema: KVTableSchema) -> Self {
+    pub fn create(
+        config: KVConfig,
+        columns_schema: KVTableSchema,
+        sstables: Vec<Arc<KVSSTable>>,
+    ) -> Self {
         let factory = KVFactory::new(config);
 
         let memtable = factory.new_memtable(&columns_schema);
-        let table_state = KVTableState::for_new_table(columns_schema, memtable);
+        let table_state = KVTableState::for_new_table(columns_schema, memtable, sstables);
 
         Self {
             factory,
@@ -29,8 +36,14 @@ impl KVTable {
         }
     }
 
-    pub fn load_state(&self) -> impl Deref<Target = Arc<KVTableState>> {
-        self.state.load()
+    pub fn insert_mutations(&self, mutations: &Vec<StructuredMutation>) {
+        todo!()
+    }
+
+    pub fn scan(&self, scan_op: impl KVScanOp) {
+        let table_state = self.state.load();
+        let result = KVScanExecutor::execute(&table_state, scan_op).unwrap();
+        todo!()
     }
 
     pub async fn flush_current_memtable(&self) {
@@ -52,4 +65,20 @@ impl KVTable {
             })
             .await;
     }
+
+    // pub fn load_state(&self) -> impl Deref<Target = Arc<KVTableState>> {
+    //     self.state.load()
+    // }
+
+    // pub async fn add_sstables(&self, sstables: Vec<Arc<()>>) {
+    //     self.state
+    //         .mutate(|state| {
+    //             let mut next_state = state.clone();
+
+    //             next_state.sstables.extend(sstables);
+
+    //             Some(next_state)
+    //         })
+    //         .await;
+    // }
 }

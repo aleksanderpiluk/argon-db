@@ -6,15 +6,10 @@ use std::{
     task::Waker,
 };
 
-<<<<<<< HEAD:libargondb/src/block_cache/page_buffer.rs
-use crate::block_cache::{
-    block_cache::{BlockCacheConfig, BlockCacheTag},
-=======
-use crate::argonfs::block_cache::block_view::BlockView;
+use crate::argonfs::{block_cache::block_view::BlockView, core::BufferHandle};
 
 use super::{
     block_cache::BlockCacheConfig,
->>>>>>> ae412a2 (commit):libargondb/src/argonfs/block_cache/page_buffer.rs
     block_lock::{BlockLock, TryExclusiveLockError},
     page::{PageHeader, PageState},
 };
@@ -56,12 +51,8 @@ impl PageBuffer {
                 *header = PageHeader {
                     lock: BlockLock::new(),
                     data: blocks.add(i * block_size),
-<<<<<<< HEAD:libargondb/src/block_cache/page_buffer.rs
-                    state: PageState::Free {
-=======
                     buf_len: block_size,
                     state: PageState::FreelistItem {
->>>>>>> ae412a2 (commit):libargondb/src/argonfs/block_cache/page_buffer.rs
                         next_free: if i + 1 < blocks_total {
                             Some(headers.add(i + 1))
                         } else {
@@ -111,97 +102,6 @@ impl Drop for PageBuffer {
     }
 }
 
-<<<<<<< HEAD:libargondb/src/block_cache/page_buffer.rs
-pub struct PageHeader {
-    lock: BlockLock,
-    data: NonNull<u8>,
-    state: PageState,
-}
-
-impl PageHeader {
-    pub fn is_ready(&self) -> bool {
-        if let PageState::Block { .. } = self.state {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn is_free(&self) -> bool {
-        if let PageState::Free { .. } = self.state {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn is_acquired(&self) -> bool {
-        if let PageState::Acquired { .. } = self.state {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn free(&mut self) {
-        todo!()
-    }
-
-    pub fn acquire(&mut self, tag: BlockCacheTag) {
-        todo!()
-    }
-
-    pub fn clear_next_free(&mut self) -> FreelistNext {
-        let next_free = self.next_free;
-        self.next_free = None;
-
-        next_free
-    }
-
-    pub fn set_next_free(&mut self, next_free: FreelistNext) {
-        assert_eq!(self.next_free, None);
-        self.next_free = next_free;
-    }
-
-    pub fn usage_count_take(&mut self) -> u8 {
-        let old_state = self.lock.load_state();
-        let mut new_state = old_state;
-
-        let usage_count = new_state.usage_count_take();
-
-        self.lock
-            .try_compare_exchange_state(old_state, new_state)
-            .expect("failed while write access held");
-
-        usage_count
-    }
-
-    pub fn usage_count(&self) -> u8 {
-        self.lock.load_state().usage_count()
-    }
-}
-
-#[derive(Clone)]
-enum PageState {
-    Acquired {
-        read_dispatched: bool,
-        wakers: Vec<Waker>,
-    },
-    Free {
-        next_free: FreelistNext,
-    },
-    Block {
-        tag: Option<BlockCacheTag>,
-        block_size: usize,
-        overflow_page: Option<NonNull<PageHeader>>,
-    },
-    OverflowPage {
-        overflow_page: Option<NonNull<PageHeader>>,
-    },
-}
-
-=======
->>>>>>> ae412a2 (commit):libargondb/src/argonfs/block_cache/page_buffer.rs
 /**
  * Guards write access to the block(both header and data). When dropped, drops exclusive lock obtained on block.
  */
@@ -265,15 +165,20 @@ impl Drop for BlockExclusiveGuard {
 unsafe impl Send for BlockExclusiveGuard {}
 unsafe impl Sync for BlockExclusiveGuard {}
 
+impl BufferHandle for BlockExclusiveGuard {
+    fn get_writer(&mut self) -> Box<dyn std::io::Write> {
+        todo!()
+    }
+
+    fn get_buf(&mut self) -> &mut dyn bytes::Buf {
+        todo!()
+    }
+}
+
 /**
  * Guards read access to the block(both header and data). When dropped, drops shared lock obtained on block.
  */
 pub struct BlockSharedGuard(NonNull<PageHeader>);
-<<<<<<< HEAD:libargondb/src/block_cache/page_buffer.rs
-
-unsafe impl Sync for BlockSharedGuard {}
-=======
->>>>>>> ae412a2 (commit):libargondb/src/argonfs/block_cache/page_buffer.rs
 
 impl BlockSharedGuard {
     pub fn header(&self) -> NonNull<PageHeader> {

@@ -1,19 +1,12 @@
-use async_trait::async_trait;
 use bytes::Buf;
 
 use crate::{
-    argonfs::buffer_allocator::BufferAllocator,
+    argonfs::core::BufferAllocator,
     kv::{KVSSTableBlockPtr, KVSSTableDataBlockIter},
 };
 
-#[async_trait]
 pub trait SSTableFormatReader {
-    async fn load_data_block(
-        &self,
-        ptr: KVSSTableBlockPtr,
-        // io: Arc<BoxIOSubsystem>,
-        alloc_fn: &mut dyn BufferAllocator,
-    ) -> usize;
+    fn load_data_block(&self, ptr: KVSSTableBlockPtr, alloc_fn: &mut dyn BufferAllocator) -> usize;
 
     fn get_data_block_iter(
         &self,
@@ -22,3 +15,5 @@ pub trait SSTableFormatReader {
 }
 
 pub type BoxSSTableFormatReader = Box<dyn SSTableFormatReader + Send + Sync>;
+
+pub enum SSTableFormatReaderError {}

@@ -13,7 +13,7 @@ use crate::{
             error::{ArgonfileBuilderError, ArgonfileWriterError},
             utils::{ArgonfileSizeCountingWriter, ArgonfileWrite, checked_write},
         },
-        buffer_allocator::BufferAllocator,
+        core::BufferAllocator,
     },
     ensure,
 };
@@ -119,7 +119,7 @@ impl<C: ArgonfileCompressionStrategy> ArgonfileBlockReader<C> {
 }
 
 impl<C: ArgonfileCompressionStrategy> ArgonfileBlockReader<C> {
-    pub fn read(&self, buf: &[u8], mut allocator: impl BufferAllocator) {
+    pub fn read(&self, buf: &[u8], allocator: &mut dyn BufferAllocator) {
         let header_bytes = <[u8; 24]>::try_from(&buf[0..24]).unwrap();
         let header = BlockHeaderReader::read(&header_bytes).unwrap();
 
@@ -129,18 +129,18 @@ impl<C: ArgonfileCompressionStrategy> ArgonfileBlockReader<C> {
         let checksum_buffer_end = compressed_buffer_end + header.checksum_size as usize;
         let checksum = &buf[compressed_buffer_end..checksum_buffer_end];
 
-        let mut out_buffer = allocator.alloc(header.data_uncompressed_size as _);
-        self.compression
-            .decompress(compressed_buffer, &mut out_buffer);
+        // let mut out_buffer = allocator.alloc(header.data_uncompressed_size as _);
+        // self.compression
+        //     .decompress(compressed_buffer, &mut out_buffer);
 
-        let checksum_stategy =
-            ArgonfileChecksumStrategyFactory::from_checksum_type(header.checksum_type);
-        assert!(
-            checksum_stategy
-                .verify_checksum(&mut out_buffer, checksum)
-                .unwrap()
-                == true
-        );
+        // let checksum_stategy =
+        //     ArgonfileChecksumStrategyFactory::from_checksum_type(header.checksum_type);
+        // assert!(
+        //     checksum_stategy
+        //         .verify_checksum(&mut out_buffer, checksum)
+        //         .unwrap()
+        //         == true
+        // );
     }
 }
 

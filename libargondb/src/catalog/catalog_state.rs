@@ -28,7 +28,7 @@ impl CatalogState {
         }
     }
 
-    pub fn lookup_table_by_name(&self, table_name: &String) -> Option<Arc<KVTable>> {
+    pub fn lookup_table_by_name(&self, table_name: &str) -> Option<Arc<KVTable>> {
         self.table_name_map
             .get(table_name)
             .map(|table_ref| table_ref.clone())

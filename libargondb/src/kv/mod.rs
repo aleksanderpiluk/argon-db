@@ -3,6 +3,7 @@ pub mod config;
 mod error;
 mod factory;
 mod flusher;
+mod limits;
 pub mod memtable;
 pub mod mutation;
 pub mod primary_key;
@@ -14,7 +15,9 @@ pub mod table_state;
 
 pub use sstable::{KVSSTableBuilder, KVSSTableDataBlockIter, KVSSTableReader};
 
-pub use scan::ColumnFilter;
+pub use limits::KVLimits;
+pub use primary_key::KVPrimaryKeyMarker;
+pub use scan::KVColumnFilter;
 pub use scan::KVRangeScan;
 pub use scan::KVScanExecutor;
 pub use scan::KVScanIteratorItem;

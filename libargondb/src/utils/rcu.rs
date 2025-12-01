@@ -31,6 +31,18 @@ impl<T> RCU<T> {
             self.state.store(Arc::new(next));
         }
     }
+
+    pub fn mutate_blocking<F>(&self, mutate_fn: F)
+    where
+        F: FnOnce(&T) -> Option<T>,
+    {
+        let _guard = self.state_mut_lock.lock_blocking();
+
+        let current = self.state.load();
+        if let Some(next) = mutate_fn(&current) {
+            self.state.store(Arc::new(next));
+        }
+    }
 }
 
 impl<T: Debug> Debug for RCU<T> {
