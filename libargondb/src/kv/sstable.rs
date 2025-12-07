@@ -44,7 +44,7 @@ pub struct KVSSTableSummaryIndex {
 }
 
 impl KVSSTableSummaryIndex {
-    fn get_range_scan_blocks(&self, scan: &KVRangeScan) -> Vec<KVSSTableBlockPtr> {
+    pub fn get_range_scan_blocks(&self, scan: &KVRangeScan) -> Vec<KVSSTableBlockPtr> {
         todo!()
     }
 }

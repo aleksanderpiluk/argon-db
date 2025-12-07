@@ -1,4 +1,4 @@
-use std::{fs::File, path::PathBuf};
+use std::{fs::File, path::Path};
 
 use memmap::MmapOptions;
 
@@ -26,5 +26,18 @@ impl PlatformIOAdapter for DefaultPlatformIo {
         Ok(Box::new(map))
     }
 
-    fn scan_dir(&self, dir: PathBuf) {}
+    fn seek_and_read(
+        &self,
+        request: super::core::IOFileSeekAndReadRequest,
+    ) -> Result<Box<dyn AsRef<[u8]>>, ()> {
+        todo!()
+    }
+
+    fn scan_dir(&self, dir: &Path) -> Result<super::core::ScanDirResult, ()> {
+        todo!()
+    }
+
+    fn exists(&self, path: &Path) -> Result<bool, ()> {
+        todo!()
+    }
 }

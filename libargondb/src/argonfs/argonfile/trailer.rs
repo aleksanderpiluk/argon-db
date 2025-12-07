@@ -25,13 +25,11 @@ impl ArgonfileTrailerWriter {
         w: &mut impl ArgonfileWrite,
         summary_block_ptr: &ArgonfileBlockPointer,
         stats_block_ptr: &ArgonfileBlockPointer,
-        compression_type: u16,
     ) -> Result<usize, ArgonfileWriterError> {
         let mut writer = ArgonfileSizeCountingWriter::new(w);
 
         ArgonfileBlockPointerWriter::write(&mut writer, summary_block_ptr)?;
         ArgonfileBlockPointerWriter::write(&mut writer, stats_block_ptr)?;
-        writer.write(&u16::to_le_bytes(compression_type))?;
 
         Ok(writer.size())
     }

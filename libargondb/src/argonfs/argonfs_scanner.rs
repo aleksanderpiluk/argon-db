@@ -1,52 +1,57 @@
-use std::{fs, io, path::PathBuf, sync::Arc};
+use std::{io, sync::Arc};
 
 use crate::{
     ArgonFsConfig,
-    argonfs::{io_subsystem::IOSubsystem, path_factory::ArgonFsPathFactory},
+    argonfs::{
+        block_cache::BlockCache, io_subsystem::IOSubsystem, path_factory::ArgonFsPathFactory,
+    },
     kv::KVSSTableReader,
 };
 
 pub struct ArgonFsScanner {
+    block_cache: Arc<BlockCache>,
     io_subsystem: Arc<IOSubsystem>,
     path_factory: ArgonFsPathFactory,
 }
 
 impl ArgonFsScanner {
-    pub fn new(config: &ArgonFsConfig, io_subsystem: Arc<IOSubsystem>) -> Self {
+    pub fn new(
+        config: &ArgonFsConfig,
+        block_cache: Arc<BlockCache>,
+        io_subsystem: Arc<IOSubsystem>,
+    ) -> Self {
         let path_factory = ArgonFsPathFactory::new(config.clone());
 
         Self {
+            block_cache,
             io_subsystem,
             path_factory,
         }
     }
 
     pub fn scan_table(&self, table_name: &str) -> Result<ArgonFsScanTableResult, io::Error> {
+        let io = self.io_subsystem.platform_io_adapter();
         let table_dir = self.path_factory.table_dir(table_name);
+        let mut sstables = vec![];
 
-        let result_dir = self.io_subsystem.platform_io_adapter().scan_dir(table_dir);
+        if !(io.exists(&table_dir).unwrap()) {
+            return Ok(ArgonFsScanTableResult { sstables });
+        }
 
-        let sstables = vec![];
+        let dir_content = io.scan_dir(&table_dir).unwrap();
 
-        // let table_dir_exists = match fs::exists(&table_dir) {
-        //     Ok(exists) => exists,
-        //     Err(err) => {
-        //         return Err(err);
-        //     }
-        // };
+        for file_path in &dir_content.files {
+            if file_path.ends_with(".argonfile") {
+                // let format_reader =
+                //     ArgonfileFormatReader::new(self.io_subsystem.clone(), file_path);
 
-        // if table_dir_exists {
-        //     match fs::read_dir(&table_dir) {
-        //         Ok(dir_iter) => {
-        //             for entry in dir_iter {
-        //                 let entry = entry?;
-        //             }
-        //         }
-        //         Err(err) => {
-        //             return Err(err);
-        //         }
-        //     };
-        // }
+                // sstables.push(CachedSSTableReader::new(
+                //     self.block_cache.clone(),
+                //     self.io_subsystem.clone(),
+                //     format_reader,
+                // ));
+            }
+        }
 
         Ok(ArgonFsScanTableResult { sstables })
     }

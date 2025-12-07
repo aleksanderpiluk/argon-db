@@ -5,6 +5,7 @@ mod io;
 pub mod kv;
 mod module;
 pub mod ops;
+mod platform;
 mod utils;
 mod wal;
 

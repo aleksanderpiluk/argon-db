@@ -15,12 +15,15 @@ pub mod table_state;
 
 pub use sstable::{KVSSTableBuilder, KVSSTableDataBlockIter, KVSSTableReader};
 
+pub use error::KVRuntimeError;
 pub use limits::KVLimits;
 pub use primary_key::KVPrimaryKeyMarker;
 pub use scan::KVColumnFilter;
 pub use scan::KVRangeScan;
 pub use scan::KVScanExecutor;
+pub use scan::KVScanIterator;
 pub use scan::KVScanIteratorItem;
+pub use scan::KVScannable;
 pub use sstable::KVSSTable;
 pub use sstable::KVSSTableBlockPtr;
 pub use sstable::KVSSTableStats;

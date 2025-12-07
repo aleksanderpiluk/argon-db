@@ -1,25 +1,11 @@
-use std::io::Write;
+mod algo;
+mod compression_algo;
+mod compression_algo_resolver;
+mod compression_error;
+mod compression_type;
 
-mod no_compression;
-
-pub use no_compression::ArgonfileNoCompression;
-
-use crate::argonfs::argonfile::config::ArgonfileConfig;
-
-pub trait ArgonfileCompressionStrategy {
-    fn compression_type(&self) -> u16;
-
-    fn compress(data: &[u8]) -> Box<[u8]>;
-
-    fn decompress<W: Write>(&self, data: &[u8], out: &mut W);
-
-    fn clone(&self) -> Self;
-}
-
-pub struct ArgonfileCompressionStrategyFactory;
-
-impl ArgonfileCompressionStrategyFactory {
-    pub fn from_config(config: &ArgonfileConfig) -> impl ArgonfileCompressionStrategy {
-        ArgonfileNoCompression
-    }
-}
+pub use compression_algo::CompressionAlgo;
+pub use compression_algo_resolver::CompressionAlgoResolver;
+pub use compression_error::CompressionError;
+pub use compression_type::CompressionType;
+pub use compression_type::CompressionTypeParseError;

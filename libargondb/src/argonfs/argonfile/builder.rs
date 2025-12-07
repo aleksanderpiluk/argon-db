@@ -3,21 +3,19 @@ use std::io::Write;
 use async_trait::async_trait;
 
 use super::{
-    block::ArgonfileBlockBuilder,
-    block_identifier::BLOCK_IDENTIFIER_DATA,
-    block_ptr::ArgonfileBlockPointer,
-    checksum::{ArgonfileChecksumStrategy, ArgonfileChecksumStrategyFactory},
-    compression::{ArgonfileCompressionStrategy, ArgonfileCompressionStrategyFactory},
-    config::ArgonfileConfig,
-    error::ArgonfileBuilderError,
-    magic::ArgonfileMagicWriter,
-    row::ArgonfileRowBuilder,
-    stats::ArgonfileStatsBuilder,
-    summary::ArgonfileSummaryBuilder,
-    trailer::ArgonfileTrailerWriter,
+    block::ArgonfileBlockBuilder, block_identifier::BLOCK_IDENTIFIER_DATA,
+    block_ptr::ArgonfileBlockPointer, config::ArgonfileConfig, error::ArgonfileBuilderError,
+    magic::ArgonfileMagicWriter, row::ArgonfileRowBuilder, stats::ArgonfileStatsBuilder,
+    summary::ArgonfileSummaryBuilder, trailer::ArgonfileTrailerWriter,
     utils::ArgonfileOffsetCountingWriteWrapper,
 };
-use crate::kv::{KVSSTableBuilder, mutation::KVMutation};
+use crate::{
+    argonfs::argonfile::{
+        checksum::{ChecksumAlgoResolver, ChecksumType},
+        compression::{CompressionAlgoResolver, CompressionType},
+    },
+    kv::{KVSSTableBuilder, mutation::KVMutation},
+};
 
 struct ArgonfileBuilder<'a, W: Write + Send> {
     config: &'a ArgonfileConfig,
@@ -48,14 +46,8 @@ impl<'a, W: Write + Send> ArgonfileBuilder<'a, W> {
     pub fn finalize(self) -> Result<W, ArgonfileBuilderError> {
         let orchestrator = self.orchestrator;
         let (mut writer, summary_block_ptr, stats_block_ptr) = orchestrator.end()?;
-        let compression_strategy = ArgonfileCompressionStrategyFactory::from_config(self.config);
 
-        ArgonfileTrailerWriter::write(
-            &mut writer,
-            &summary_block_ptr,
-            &stats_block_ptr,
-            compression_strategy.compression_type(),
-        )?;
+        ArgonfileTrailerWriter::write(&mut writer, &summary_block_ptr, &stats_block_ptr)?;
         ArgonfileMagicWriter::write(&mut writer)?;
 
         Ok(writer.into_inner())
@@ -201,14 +193,16 @@ impl<'a, W: Write> BlocksBuildingOrchestrator<'a, W> {
             .block_builder
             .take()
             .ok_or(ArgonfileBuilderError::AssertionError)?;
-        let checksum_strategy = ArgonfileChecksumStrategyFactory::from_config(self.config);
-        let compression_strategy = ArgonfileCompressionStrategyFactory::from_config(self.config);
+
+        let checksum_algo = ChecksumAlgoResolver::for_checksum_type(ChecksumType::CRC32);
+        let compression_algo =
+            CompressionAlgoResolver::for_compression_type(CompressionType::Uncompressed);
 
         let block_ptr = block_builder.build(
             &mut self.writer,
             BLOCK_IDENTIFIER_DATA,
-            &checksum_strategy,
-            &compression_strategy,
+            &checksum_algo,
+            &compression_algo,
         )?;
 
         self.summary_builder.finish_block_with_ptr(block_ptr);

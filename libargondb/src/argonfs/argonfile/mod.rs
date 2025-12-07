@@ -1,5 +1,6 @@
 mod argonfile_format_reader;
 mod block;
+mod block_header;
 mod block_identifier;
 mod block_ptr;
 mod builder;
@@ -18,7 +19,7 @@ mod utils;
 //     compression: ArgonfileCompressionType,
 // }
 
-pub use argonfile_format_reader::ArgonfileFormatReader;
+// pub use argonfile_format_reader::ArgonfileFormatReader;
 
 pub enum ArgonfileCompressionType {
     None,

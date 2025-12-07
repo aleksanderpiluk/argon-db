@@ -3,13 +3,12 @@ use std::{path::Path, sync::Arc};
 use crate::{
     ArgonFsConfig,
     argonfs::{
-        argonfile::ArgonfileFormatReader,
+        argonfile_sstable::ArgonfileSSTable,
         argonfs_scanner::{ArgonFsScanTableResult, ArgonFsScanner},
         block_cache::BlockCache,
-        cached_sstable_reader::CachedSSTableReader,
         io_subsystem::{IOSubsystem, IOSubsystemInitError},
     },
-    kv::KVSSTableReader,
+    kv::KVScannable,
 };
 
 pub struct ArgonFs {
@@ -25,7 +24,11 @@ impl ArgonFs {
 
         let io_subsystem = Arc::new(IOSubsystem::init()?);
 
-        let scanner = Arc::new(ArgonFsScanner::new(&config, io_subsystem.clone()));
+        let scanner = Arc::new(ArgonFsScanner::new(
+            &config,
+            block_cache.clone(),
+            io_subsystem.clone(),
+        ));
 
         Ok(Self {
             block_cache,
@@ -38,15 +41,16 @@ impl ArgonFs {
         self.scanner.scan_table(table_name).unwrap()
     }
 
-    pub fn open_sstable(&self, p: impl AsRef<Path>) -> Arc<Box<dyn KVSSTableReader + Send + Sync>> {
-        Arc::new(Box::new(CachedSSTableReader::new(
-            self.block_cache.clone(),
-            self.io_subsystem.clone(),
-            Arc::new(Box::new(ArgonfileFormatReader::new(
-                self.io_subsystem.clone(),
-                p,
-            ))),
-        )))
+    pub fn open_sstable(&self, p: impl AsRef<Path>) -> Box<dyn KVScannable> {
+        // Box::new(CachedSSTableReader::new(
+        //     self.block_cache.clone(),
+        //     self.io_subsystem.clone(),
+        //     Arc::new(Box::new(ArgonfileFormatReader::new(
+        //         self.io_subsystem.clone(),
+        //         p,
+        //     ))),
+        // ))
+        Box::new(ArgonfileSSTable::new(self.block_cache.clone()))
     }
 }
 
