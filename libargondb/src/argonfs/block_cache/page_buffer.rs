@@ -6,7 +6,7 @@ use std::{
     task::Waker,
 };
 
-use crate::argonfs::{block_cache::block_view::BlockView, core::BufferHandle};
+use crate::argonfs::block_cache::block_view::BlockView;
 
 use super::{
     block_cache::BlockCacheConfig,
@@ -164,16 +164,6 @@ impl Drop for BlockExclusiveGuard {
 
 unsafe impl Send for BlockExclusiveGuard {}
 unsafe impl Sync for BlockExclusiveGuard {}
-
-impl BufferHandle for BlockExclusiveGuard {
-    fn get_writer(&mut self) -> Box<dyn std::io::Write> {
-        todo!()
-    }
-
-    fn get_buf(&mut self) -> &mut dyn bytes::Buf {
-        todo!()
-    }
-}
 
 /**
  * Guards read access to the block(both header and data). When dropped, drops shared lock obtained on block.

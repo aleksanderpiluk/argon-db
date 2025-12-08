@@ -1,35 +1,37 @@
-use std::io::Write;
+use crate::argonfs::argonfile::ArgonfileDeserializeError;
+use crate::argonfs::argonfile::magic::ARGONFILE_MAGIC;
 
 use super::block_ptr::{ArgonfileBlockPointer, ArgonfileBlockPointerWriter};
 use super::{
     error::ArgonfileWriterError,
-    utils::{
-        ArgonfileSizeCountingWriter, ArgonfileWrite, checked_write, inner_writer_error_mapper,
-    },
+    utils::{ArgonfileSizeCountingWriter, ArgonfileWrite},
 };
 
-pub struct ArgonfileTrailer {}
-
-pub struct ArgonfileTrailerReader;
-
-impl ArgonfileTrailerReader {
-    pub fn read() {
-        todo!()
-    }
+pub struct Trailer {
+    pub sstable_id: u64,
+    pub summary_block_ptr: ArgonfileBlockPointer,
+    pub stats_block_ptr: ArgonfileBlockPointer,
 }
 
-pub struct ArgonfileTrailerWriter;
+impl Trailer {
+    pub const SERIALIZED_SIZE: usize = 36;
 
-impl ArgonfileTrailerWriter {
-    pub fn write(
+    pub fn deserialize(buf: &[u8]) -> Result<Trailer, ArgonfileDeserializeError> {
+        // let sstable_id = u64::from_be_bytes(bytes)?;
+
+        todo!()
+    }
+
+    pub fn serialize(
         w: &mut impl ArgonfileWrite,
-        summary_block_ptr: &ArgonfileBlockPointer,
-        stats_block_ptr: &ArgonfileBlockPointer,
+        trailer: &Self,
     ) -> Result<usize, ArgonfileWriterError> {
         let mut writer = ArgonfileSizeCountingWriter::new(w);
 
-        ArgonfileBlockPointerWriter::write(&mut writer, summary_block_ptr)?;
-        ArgonfileBlockPointerWriter::write(&mut writer, stats_block_ptr)?;
+        writer.write(&u64::to_le_bytes(trailer.sstable_id))?;
+        ArgonfileBlockPointerWriter::write(&mut writer, &trailer.summary_block_ptr)?;
+        ArgonfileBlockPointerWriter::write(&mut writer, &trailer.stats_block_ptr)?;
+        writer.write(ARGONFILE_MAGIC)?;
 
         Ok(writer.size())
     }

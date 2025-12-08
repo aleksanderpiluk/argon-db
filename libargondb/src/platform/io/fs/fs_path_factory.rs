@@ -1,14 +1,14 @@
 use std::path::{Path, PathBuf};
 
-use crate::argonfs::config::ArgonFsConfig;
+use crate::platform::io::fs::FsFileSystemConfig;
 
-pub struct ArgonFsPathFactory {
-    config: ArgonFsConfig,
+pub struct FsPathFactory {
+    config: FsFileSystemConfig,
     tables_root: PathBuf,
 }
 
-impl ArgonFsPathFactory {
-    pub fn new(config: ArgonFsConfig) -> Self {
+impl FsPathFactory {
+    pub fn new(config: FsFileSystemConfig) -> Self {
         let tables_root = config.storage_root.join("tables");
 
         Self {

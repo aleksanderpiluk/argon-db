@@ -6,11 +6,11 @@ use super::{
     block::ArgonfileBlockBuilder, block_identifier::BLOCK_IDENTIFIER_DATA,
     block_ptr::ArgonfileBlockPointer, config::ArgonfileConfig, error::ArgonfileBuilderError,
     magic::ArgonfileMagicWriter, row::ArgonfileRowBuilder, stats::ArgonfileStatsBuilder,
-    summary::ArgonfileSummaryBuilder, trailer::ArgonfileTrailerWriter,
-    utils::ArgonfileOffsetCountingWriteWrapper,
+    summary::ArgonfileSummaryBuilder, utils::ArgonfileOffsetCountingWriteWrapper,
 };
 use crate::{
     argonfs::argonfile::{
+        Trailer,
         checksum::{ChecksumAlgoResolver, ChecksumType},
         compression::{CompressionAlgoResolver, CompressionType},
     },
@@ -47,8 +47,14 @@ impl<'a, W: Write + Send> ArgonfileBuilder<'a, W> {
         let orchestrator = self.orchestrator;
         let (mut writer, summary_block_ptr, stats_block_ptr) = orchestrator.end()?;
 
-        ArgonfileTrailerWriter::write(&mut writer, &summary_block_ptr, &stats_block_ptr)?;
-        ArgonfileMagicWriter::write(&mut writer)?;
+        Trailer::serialize(
+            &mut writer,
+            &Trailer {
+                sstable_id: todo!(),
+                summary_block_ptr,
+                stats_block_ptr,
+            },
+        )?;
 
         Ok(writer.into_inner())
     }

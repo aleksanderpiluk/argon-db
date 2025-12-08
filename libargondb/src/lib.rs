@@ -1,7 +1,6 @@
 #![warn(clippy::pedantic)]
 mod argonfs;
 mod catalog;
-mod io;
 pub mod kv;
 mod module;
 pub mod ops;

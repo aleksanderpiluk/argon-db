@@ -2,56 +2,51 @@ use std::{io, sync::Arc};
 
 use crate::{
     ArgonFsConfig,
-    argonfs::{
-        block_cache::BlockCache, io_subsystem::IOSubsystem, path_factory::ArgonFsPathFactory,
-    },
+    argonfs::block_cache::BlockCache,
     kv::KVSSTableReader,
+    platform::io::{BoxFileSystem, FileSystem},
 };
 
 pub struct ArgonFsScanner {
     block_cache: Arc<BlockCache>,
-    io_subsystem: Arc<IOSubsystem>,
-    path_factory: ArgonFsPathFactory,
+    filesystem: Arc<BoxFileSystem>,
 }
 
 impl ArgonFsScanner {
     pub fn new(
         config: &ArgonFsConfig,
         block_cache: Arc<BlockCache>,
-        io_subsystem: Arc<IOSubsystem>,
+        filesystem: Arc<BoxFileSystem>,
     ) -> Self {
-        let path_factory = ArgonFsPathFactory::new(config.clone());
-
         Self {
             block_cache,
-            io_subsystem,
-            path_factory,
+            filesystem,
         }
     }
 
     pub fn scan_table(&self, table_name: &str) -> Result<ArgonFsScanTableResult, io::Error> {
-        let io = self.io_subsystem.platform_io_adapter();
-        let table_dir = self.path_factory.table_dir(table_name);
+        // let io = self.io_subsystem.platform_io_adapter();
+        // let table_dir = self.path_factory.table_dir(table_name);
         let mut sstables = vec![];
 
-        if !(io.exists(&table_dir).unwrap()) {
-            return Ok(ArgonFsScanTableResult { sstables });
-        }
+        // if !(io.exists(&table_dir).unwrap()) {
+        //     return Ok(ArgonFsScanTableResult { sstables });
+        // }
 
-        let dir_content = io.scan_dir(&table_dir).unwrap();
+        // let dir_content = io.scan_dir(&table_dir).unwrap();
 
-        for file_path in &dir_content.files {
-            if file_path.ends_with(".argonfile") {
-                // let format_reader =
-                //     ArgonfileFormatReader::new(self.io_subsystem.clone(), file_path);
+        // for file_path in &dir_content.files {
+        //     if file_path.ends_with(".argonfile") {
+        //         // let format_reader =
+        //         //     ArgonfileFormatReader::new(self.io_subsystem.clone(), file_path);
 
-                // sstables.push(CachedSSTableReader::new(
-                //     self.block_cache.clone(),
-                //     self.io_subsystem.clone(),
-                //     format_reader,
-                // ));
-            }
-        }
+        //         // sstables.push(CachedSSTableReader::new(
+        //         //     self.block_cache.clone(),
+        //         //     self.io_subsystem.clone(),
+        //         //     format_reader,
+        //         // ));
+        //     }
+        // }
 
         Ok(ArgonFsScanTableResult { sstables })
     }

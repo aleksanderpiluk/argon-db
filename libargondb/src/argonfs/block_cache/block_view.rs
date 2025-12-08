@@ -51,3 +51,6 @@ impl Buf for BlockView {
         self.pos += cnt;
     }
 }
+
+unsafe impl Send for BlockView {}
+unsafe impl Sync for BlockView {}

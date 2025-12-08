@@ -1,4 +1,6 @@
+mod argonfile_data_block_iter;
 mod argonfile_format_reader;
+mod argonfile_reader;
 mod block;
 mod block_header;
 mod block_identifier;
@@ -15,29 +17,14 @@ mod summary;
 mod trailer;
 mod utils;
 
-// pub struct ArgonfileReader {
-//     compression: ArgonfileCompressionType,
-// }
+pub use argonfile_data_block_iter::ArgonfileDataBlockIter;
+pub use argonfile_reader::ArgonfileReader;
+pub use argonfile_reader::ArgonfileReaderError;
+pub use error::ArgonfileDeserializeError;
 
-// pub use argonfile_format_reader::ArgonfileFormatReader;
-
-pub enum ArgonfileCompressionType {
-    None,
-}
+pub use trailer::Trailer;
 
 use bytemuck::from_bytes;
-
-fn summary_block_lookup() {
-    let data: &[u8] = &[0, 1, 2, 3, 4]; // TODO:
-
-    let mut iter = SummaryBlockIterator::new(data);
-}
-
-fn index_block_lookup() {
-    let data: &[u8] = &[0, 1, 2, 3, 4]; // TODO:
-
-    let mut iter = IndexBlockIterator::new(data);
-}
 
 struct SummaryBlockIterator<'a> {
     data: &'a [u8],
