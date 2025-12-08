@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use async_io::block_on;
 use libargondb::{
     ArgonFs, ArgonFsConfig, Catalog,
     kv::{
-        KVColumnFilter, KVPrimaryKeyMarker, KVRangeScan, KVSSTable, KVSSTableReader, KVTable,
+        KVColumnFilter, KVPrimaryKeyMarker, KVRangeScan, KVTable,
         column_type::ColumnTypeCode,
         config::KVConfig,
         schema::{KVColumnSchema, KVTableSchema},
@@ -13,11 +14,13 @@ use libargondb::{
 use crate::db_ctx::DbCtx;
 
 pub fn run_db_bootstrap() {
-    let db_ctx = create_db_ctx();
+    block_on(async {
+        let db_ctx = create_db_ctx();
 
-    create_argonsys_tables(&db_ctx);
+        create_argonsys_tables(&db_ctx).await;
 
-    create_existing_tables(&db_ctx);
+        create_existing_tables(&db_ctx).await;
+    });
 }
 
 fn create_db_ctx() -> Arc<DbCtx> {
@@ -37,14 +40,13 @@ fn init_argon_fs() -> Arc<ArgonFs> {
     Arc::new(argon_fs)
 }
 
-fn create_argonsys_tables(db_ctx: &DbCtx) {
+async fn create_argonsys_tables(db_ctx: &DbCtx) {
     let catalog = &db_ctx.catalog;
     let argon_fs = &db_ctx.argon_fs;
 
     let kv_config = KVConfig::default();
 
-    let table_scan = argon_fs.scan_table("_argonsys_tables");
-    let sstables = vec![];
+    let sstables = argon_fs.scan_sstables("_argonsys_tables").await.unwrap();
     let argonsys_tables_table = KVTable::create(
         kv_config.clone(),
         get_argonsys_tables_table_schema(),
@@ -55,8 +57,7 @@ fn create_argonsys_tables(db_ctx: &DbCtx) {
         Arc::new(argonsys_tables_table),
     );
 
-    let table_scan = argon_fs.scan_table("_argonsys_columns");
-    let sstables = vec![];
+    let sstables = argon_fs.scan_sstables("_argonsys_columns").await.unwrap();
     let argonsys_columns_table = KVTable::create(
         kv_config.clone(),
         get_argonsys_columns_table_schema(),
@@ -68,16 +69,18 @@ fn create_argonsys_tables(db_ctx: &DbCtx) {
     );
 }
 
-fn create_existing_tables(db_ctx: &DbCtx) {
+async fn create_existing_tables(db_ctx: &DbCtx) {
     let catalog = &db_ctx.catalog;
 
     let table = catalog.lookup_table_by_name("_argonsys_tables").unwrap();
 
-    table.scan(KVRangeScan::new(
-        KVPrimaryKeyMarker::Start,
-        KVPrimaryKeyMarker::End,
-        KVColumnFilter::All,
-    ));
+    table
+        .scan(KVRangeScan::new(
+            KVPrimaryKeyMarker::Start,
+            KVPrimaryKeyMarker::End,
+            KVColumnFilter::All,
+        ))
+        .await;
     todo!()
 }
 

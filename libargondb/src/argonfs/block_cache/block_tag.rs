@@ -2,8 +2,8 @@ use crate::kv::KVSSTableBlockPtr;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct BlockTag {
-    sstable_id: u64,
-    block_ptr: KVSSTableBlockPtr,
+    pub sstable_id: u64,
+    pub block_ptr: KVSSTableBlockPtr,
 }
 
 impl BlockTag {

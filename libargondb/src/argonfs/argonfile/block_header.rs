@@ -1,9 +1,8 @@
-use std::array::TryFromSliceError;
-
 use crate::argonfs::argonfile::{
+    ArgonfileDeserializeError,
     block_identifier::BlockIdentifier,
-    checksum::{ChecksumType, ChecksumTypeParseError},
-    compression::{CompressionType, CompressionTypeParseError},
+    checksum::ChecksumType,
+    compression::CompressionType,
     error::ArgonfileWriterError,
     utils::{ArgonfileSizeCountingWriter, ArgonfileWrite},
 };
@@ -19,12 +18,8 @@ pub struct BlockHeader {
 
 impl BlockHeader {
     pub const SIZE_SERIALIZED: usize = 24;
-}
 
-pub struct BlockHeaderReader;
-
-impl BlockHeaderReader {
-    pub fn read(buf: &[u8]) -> Result<BlockHeader, BlockHeaderReaderError> {
+    pub fn deserialize(buf: &[u8]) -> Result<BlockHeader, ArgonfileDeserializeError> {
         let header_bytes = <[u8; BlockHeader::SIZE_SERIALIZED]>::try_from(buf)?;
 
         let block_identifier: [u8; 8] = <[u8; 8]>::try_from(&buf[0..8])?;
@@ -46,32 +41,8 @@ impl BlockHeaderReader {
             checksum_size,
         })
     }
-}
 
-pub struct BlockHeaderReaderError;
-
-impl From<ChecksumTypeParseError> for BlockHeaderReaderError {
-    fn from(value: ChecksumTypeParseError) -> Self {
-        todo!()
-    }
-}
-
-impl From<CompressionTypeParseError> for BlockHeaderReaderError {
-    fn from(value: CompressionTypeParseError) -> Self {
-        todo!()
-    }
-}
-
-impl From<TryFromSliceError> for BlockHeaderReaderError {
-    fn from(value: TryFromSliceError) -> Self {
-        todo!()
-    }
-}
-
-pub struct BlockHeaderWriter;
-
-impl BlockHeaderWriter {
-    pub fn write(
+    pub fn serialize(
         writer: &mut impl ArgonfileWrite,
         block_identifier: &BlockIdentifier,
         data_compressed_size: u32,

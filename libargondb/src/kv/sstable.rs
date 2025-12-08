@@ -35,12 +35,12 @@ impl Debug for KVSSTable {
 }
 
 pub struct KVSSTableStats {
-    min_row: Box<[u8]>,
-    max_row: Box<[u8]>,
+    pub min_row: Box<[u8]>,
+    pub max_row: Box<[u8]>,
 }
 
 pub struct KVSSTableSummaryIndex {
-    entries: Vec<KVSSTableSummaryIndexEntry>,
+    pub entries: Vec<KVSSTableSummaryIndexEntry>,
 }
 
 impl KVSSTableSummaryIndex {
@@ -54,20 +54,20 @@ pub struct KVSSTableSummaryIndexEntry {
     pointer: (),
 }
 
-#[async_trait]
-impl KVScannable for KVSSTable {
-    async fn range_scan(
-        &self,
-        scan: &KVRangeScan,
-    ) -> Result<Box<dyn KVScanIterator>, KVRuntimeError> {
-        // 1. Create "scan plan" by iterating through always loaded index and take blocks to scan through
-        let blocks = self.summary_index.get_range_scan_blocks(scan);
-        // 2. Create SSTableScanIter and return it - iterator makes proper scan
-        let reader = self.reader.clone();
-        let iter = KVSSTableScanIter::new(reader, blocks).await;
-        Ok(Box::new(iter))
-    }
-}
+// #[async_trait]
+// impl KVScannable for KVSSTable {
+//     async fn range_scan(
+//         &self,
+//         scan: &KVRangeScan,
+//     ) -> Result<Box<dyn KVScanIterator>, KVRuntimeError> {
+//         // 1. Create "scan plan" by iterating through always loaded index and take blocks to scan through
+//         let blocks = self.summary_index.get_range_scan_blocks(scan);
+//         // 2. Create SSTableScanIter and return it - iterator makes proper scan
+//         let reader = self.reader.clone();
+//         let iter = KVSSTableScanIter::new(reader, blocks).await;
+//         Ok(Box::new(iter))
+//     }
+// }
 
 pub struct KVSSTableScanIter {
     reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>,

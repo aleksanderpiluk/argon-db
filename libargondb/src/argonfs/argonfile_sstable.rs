@@ -11,6 +11,7 @@ use thiserror::Error;
 
 use crate::{
     argonfs::{
+        argon_fs_worker_pool::ArgonFsWorkerPool,
         argonfile::{ArgonfileDataBlockIter, ArgonfileReader, ArgonfileReaderError},
         block_cache::{BlockCache, BlockSharedGuard, BlockTag, BlockView},
     },
@@ -27,20 +28,24 @@ pub struct ArgonfileSSTable {
     sstable_id: u64,
     summary_index: KVSSTableSummaryIndex,
     stats: KVSSTableStats,
+    worker_pool: Arc<ArgonFsWorkerPool>,
 }
 
 impl ArgonfileSSTable {
     pub async fn load(
         block_cache: Arc<BlockCache>,
+        worker_pool: Arc<ArgonFsWorkerPool>,
         file_ref: BoxFileRef,
     ) -> Result<Self, ArgonfileSSTableLoadError> {
         let file_handle = file_ref.open_read_only().await?;
         let mut reader = ArgonfileReader::new(file_handle);
 
         let trailer = reader.read_trailer().await?;
-        let sstable_id = todo!();
-        let summary_index = todo!();
-        let stats = todo!();
+        let sstable_id = trailer.sstable_id;
+        let summary_index = reader
+            .read_summary_block(&trailer.summary_block_ptr)
+            .await?;
+        let stats = reader.read_stats_block(&trailer.stats_block_ptr).await?;
 
         Ok(Self {
             block_cache,
@@ -48,6 +53,7 @@ impl ArgonfileSSTable {
             sstable_id,
             summary_index,
             stats,
+            worker_pool,
         })
     }
 }
@@ -66,7 +72,7 @@ impl KVScannable for ArgonfileSSTable {
     async fn range_scan(
         &self,
         scan: &KVRangeScan,
-    ) -> Result<Box<dyn KVScanIterator>, KVRuntimeError> {
+    ) -> Result<Box<dyn KVScanIterator + Send + Sync>, KVRuntimeError> {
         // 1. Create "scan plan" by iterating through always loaded index and take blocks to scan through
         let blocks = self.summary_index.get_range_scan_blocks(scan);
         // 2. Create SSTableScanIter and return it - iterator makes proper scan
@@ -75,6 +81,7 @@ impl KVScannable for ArgonfileSSTable {
             blocks,
             self.sstable_id,
             self.file_ref.box_clone(),
+            self.worker_pool.clone(),
         )
         .await;
 
@@ -90,6 +97,7 @@ pub struct ScanIterator<B: Buf> {
     next_block_idx: usize,
     current_block_iter: Option<ArgonfileDataBlockIter<B>>,
     current_entry: Option<Box<dyn KVScanIteratorItem + Send + Sync>>,
+    worker_pool: Arc<ArgonFsWorkerPool>,
 }
 
 impl ScanIterator<Box<BlockView>> {
@@ -98,6 +106,7 @@ impl ScanIterator<Box<BlockView>> {
         blocks: Vec<KVSSTableBlockPtr>,
         sstable_id: u64,
         file_ref: BoxFileRef,
+        worker_pool: Arc<ArgonFsWorkerPool>,
     ) -> Self {
         let mut this = Self {
             block_cache,
@@ -107,6 +116,7 @@ impl ScanIterator<Box<BlockView>> {
             next_block_idx: 0,
             current_block_iter: None,
             current_entry: None,
+            worker_pool,
         };
 
         // Load first entry on initialization
@@ -124,6 +134,7 @@ impl ScanIterator<Box<BlockView>> {
                 self.block_cache.clone(),
                 BlockTag::new(self.sstable_id, *block_ptr),
                 self.file_ref.box_clone(),
+                self.worker_pool.clone(),
             )
             .await;
 
@@ -141,7 +152,7 @@ impl ScanIterator<Box<BlockView>> {
                     self.current_entry = Some(entry);
                     break;
                 } else {
-                    self.load_next_iter();
+                    self.load_next_iter().await;
                 }
             } else {
                 self.current_entry = None;
@@ -155,7 +166,7 @@ impl ScanIterator<Box<BlockView>> {
 impl KVScanIterator for ScanIterator<Box<BlockView>> {
     async fn next_mutation(&mut self) -> Option<Box<dyn KVScanIteratorItem + Send + Sync>> {
         let entry = std::mem::take(&mut self.current_entry);
-        self.load_next_entry();
+        self.load_next_entry().await;
         entry
     }
 
@@ -172,11 +183,22 @@ struct ReadBlockFuture {
     block_cache: Arc<BlockCache>,
     block_tag: BlockTag,
     file_ref: BoxFileRef,
+    worker_pool: Arc<ArgonFsWorkerPool>,
 }
 
 impl ReadBlockFuture {
-    fn new(block_cache: Arc<BlockCache>, block_tag: BlockTag, file_ref: Box<dyn FileRef>) -> Self {
-        todo!()
+    fn new(
+        block_cache: Arc<BlockCache>,
+        block_tag: BlockTag,
+        file_ref: Box<dyn FileRef>,
+        worker_pool: Arc<ArgonFsWorkerPool>,
+    ) -> Self {
+        Self {
+            block_cache,
+            block_tag,
+            file_ref,
+            worker_pool,
+        }
     }
 }
 
@@ -201,7 +223,14 @@ impl Future for ReadBlockFuture {
         if !is_dispatched {
             guard.set_read_dispatched_flag();
 
-            todo!("dispatch read");
+            let file_ref = self.file_ref.box_clone();
+            let block_ptr = self.block_tag.block_ptr.clone();
+            self.worker_pool.spawn(async move {
+                let file_handle = file_ref.open_read_only().await.unwrap();
+                let mut reader = ArgonfileReader::new(file_handle);
+
+                reader.read_block(&block_ptr.into()).await;
+            });
         }
 
         Poll::Pending

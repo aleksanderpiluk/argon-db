@@ -1,9 +1,33 @@
 use std::io::Write;
 
 use bloomfilter::Bloom;
+use bytes::Buf;
 
 use super::block_ptr::ArgonfileBlockPointer;
-use crate::{argonfs::argonfile::utils::ArgonfileWrite, kv::mutation::KVMutation};
+use crate::{
+    argonfs::argonfile::{ArgonfileReaderError, utils::ArgonfileWrite},
+    kv::{KVSSTableStats, mutation::KVMutation},
+};
+
+pub struct Stats {
+    pub min_row: Box<[u8]>,
+    pub max_row: Box<[u8]>,
+}
+
+impl Stats {
+    pub fn deserialize(buf: impl Buf) -> Result<Stats, ArgonfileReaderError> {
+        todo!()
+    }
+}
+
+impl Into<KVSSTableStats> for Stats {
+    fn into(self) -> KVSSTableStats {
+        KVSSTableStats {
+            min_row: self.min_row,
+            max_row: self.max_row,
+        }
+    }
+}
 
 pub struct ArgonfileStatsBuilder {
     bloom: Bloom<[u8]>,

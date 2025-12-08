@@ -4,8 +4,8 @@ use async_trait::async_trait;
 use crossbeam::queue::ArrayQueue;
 
 use crate::platform::io::{
-    FileSystem, FileSystemError, TableCatalogRef,
-    fs::{FsFileSystemConfig, fs_path_factory::FsPathFactory},
+    BoxFileRef, FileSystem, FileSystemError, TableCatalogRef,
+    fs::{FsFileSystemConfig, fs_file_ref::FsFileRef, fs_path_factory::FsPathFactory},
 };
 
 pub struct FsFileSystem {
@@ -40,8 +40,28 @@ impl FileSystem for FsFileSystem {
         Ok(refs)
     }
 
-    async fn scan_table_catalog(&self) {
-        todo!()
+    async fn scan_table_catalog(
+        &self,
+        table_name: &str,
+    ) -> Result<Vec<BoxFileRef>, FileSystemError> {
+        let table_dir = self.ctx.path_factory.table_dir(table_name);
+        let mut refs: Vec<BoxFileRef> = vec![];
+
+        if table_dir.exists() {
+            let dir_entries = fs::read_dir(table_dir)?;
+
+            for entry in dir_entries {
+                let entry = entry?;
+
+                if let Some(extension) = entry.path().extension()
+                    && extension == "argonfile"
+                {
+                    refs.push(Box::new(FsFileRef::new(&entry.path())));
+                }
+            }
+        }
+
+        Ok(refs)
     }
 }
 

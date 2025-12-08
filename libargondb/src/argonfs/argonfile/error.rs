@@ -1,6 +1,10 @@
-use std::io;
+use std::{array::TryFromSliceError, io};
 
 use thiserror::Error;
+
+use crate::argonfs::argonfile::{
+    checksum::ChecksumTypeParseError, compression::CompressionTypeParseError,
+};
 
 #[derive(Debug)]
 pub enum ArgonfileBuilderError {
@@ -30,4 +34,10 @@ impl From<io::Error> for ArgonfileWriterError {
 pub enum ArgonfileDeserializeError {
     #[error("invalid buffer size")]
     InvalidBufferSize,
+    #[error("checksum parse error")]
+    ChecksumTypeParseError(#[from] ChecksumTypeParseError),
+    #[error("compression type parse")]
+    CompressionTypeParseError(#[from] CompressionTypeParseError),
+    #[error("conversion to type error")]
+    TryFromSliceError(#[from] TryFromSliceError),
 }

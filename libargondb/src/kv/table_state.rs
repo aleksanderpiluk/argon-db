@@ -1,21 +1,27 @@
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
 use crate::kv::{KVSSTable, memtable::Memtable, scan::KVScannable, schema::KVTableSchema};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct KVTableState {
     flush_queue: (),
     pub columns_schema: KVTableSchema,
     pub read_memtables: Vec<Arc<Memtable>>,
     pub current_memtable: Arc<Memtable>,
-    pub sstables: Vec<Arc<KVSSTable>>,
+    pub sstables: Vec<Arc<Box<dyn KVScannable>>>,
+}
+
+impl Debug for KVTableState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KVTableState").finish()
+    }
 }
 
 impl KVTableState {
     pub fn for_new_table(
         columns_schema: KVTableSchema,
         memtable: Arc<Memtable>,
-        sstables: Vec<Arc<KVSSTable>>,
+        sstables: Vec<Arc<Box<dyn KVScannable>>>,
     ) -> Self {
         Self {
             flush_queue: (),

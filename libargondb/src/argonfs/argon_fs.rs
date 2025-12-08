@@ -1,24 +1,26 @@
-use std::{path::Path, sync::Arc};
+use std::sync::Arc;
+
+use thiserror::Error;
 
 use crate::{
     ArgonFsConfig,
     argonfs::{
-        argonfile_sstable::ArgonfileSSTable,
-        argonfs_scanner::{ArgonFsScanTableResult, ArgonFsScanner},
+        argon_fs_worker_pool::ArgonFsWorkerPool,
+        argonfile_sstable::{ArgonfileSSTable, ArgonfileSSTableLoadError},
         block_cache::BlockCache,
     },
     kv::KVScannable,
-    platform::io::{BoxFileSystem, FileSystem, fs::FsFileSystem},
+    platform::io::{BoxFileSystem, FileSystemError, fs::FsFileSystem},
 };
 
 pub struct ArgonFs {
     block_cache: Arc<BlockCache>,
     filesystem: Arc<BoxFileSystem>,
-    scanner: Arc<ArgonFsScanner>,
+    worker_pool: Arc<ArgonFsWorkerPool>,
 }
 
 impl ArgonFs {
-    pub fn init(config: ArgonFsConfig) -> Result<Self, ArgonFsInitError> {
+    pub fn init(config: ArgonFsConfig) -> Result<Self, ArgonFsError> {
         let block_cache_config = config.to_block_cache_config();
         let block_cache: Arc<BlockCache> = Arc::new(BlockCache::new(block_cache_config));
 
@@ -26,41 +28,40 @@ impl ArgonFs {
             config.fs_filesystem_config.clone(),
         )));
 
-        let scanner = Arc::new(ArgonFsScanner::new(
-            &config,
-            block_cache.clone(),
-            filesystem.clone(),
-        ));
+        let worker_pool = Arc::new(ArgonFsWorkerPool::new(1));
 
         Ok(Self {
             block_cache,
             filesystem,
-            scanner,
+            worker_pool,
         })
     }
 
-    pub fn scan_table(&self, table_name: &str) -> ArgonFsScanTableResult {
-        self.scanner.scan_table(table_name).unwrap()
-    }
+    pub async fn scan_sstables(
+        &self,
+        table_name: &str,
+    ) -> Result<Vec<Box<dyn KVScannable>>, ArgonFsError> {
+        let sstable_refs = self.filesystem.scan_table_catalog(table_name).await?;
 
-    pub async fn open_sstable(&self, p: impl AsRef<Path>) -> Box<dyn KVScannable> {
-        // Box::new(CachedSSTableReader::new(
-        //     self.block_cache.clone(),
-        //     self.io_subsystem.clone(),
-        //     Arc::new(Box::new(ArgonfileFormatReader::new(
-        //         self.io_subsystem.clone(),
-        //         p,
-        //     ))),
-        // ))
-        let file_ref = todo!();
-        let sstable = ArgonfileSSTable::load(self.block_cache.clone(), file_ref)
-            .await
-            .unwrap();
-        Box::new(sstable)
+        let mut sstables: Vec<Box<dyn KVScannable>> = vec![];
+        for file_ref in sstable_refs {
+            let argonfile_sstable = ArgonfileSSTable::load(
+                self.block_cache.clone(),
+                self.worker_pool.clone(),
+                file_ref,
+            )
+            .await?;
+            sstables.push(Box::new(argonfile_sstable));
+        }
+
+        Ok(sstables)
     }
 }
 
-#[derive(Debug)]
-pub enum ArgonFsInitError {
-    IOSubsystemInitError,
+#[derive(Error, Debug)]
+pub enum ArgonFsError {
+    #[error("argonfile load error - {0}")]
+    ArgonfileLoadError(#[from] ArgonfileSSTableLoadError),
+    #[error("file system error - {0}")]
+    FileSystemError(#[from] FileSystemError),
 }

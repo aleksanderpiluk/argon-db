@@ -120,7 +120,7 @@ impl KVScannable for Memtable {
     async fn range_scan(
         &self,
         scan: &KVRangeScan,
-    ) -> Result<Box<dyn KVScanIterator>, KVRuntimeError> {
+    ) -> Result<Box<dyn KVScanIterator + Send + Sync>, KVRuntimeError> {
         let iter = self.get_range_iterator(scan)?;
         todo!()
     }

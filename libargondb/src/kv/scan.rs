@@ -9,19 +9,20 @@ use crate::kv::{
     table_state::KVTableState,
 };
 
+#[async_trait]
 pub trait KVScanOp {
-    fn scan<'a, T: KVScannable + ?Sized>(
+    async fn scan<T: KVScannable + Send + Sync + ?Sized>(
         &self,
-        scannable: &'a T,
+        scannable: &T,
     ) -> Result<Box<dyn KVScanIterator + Send + Sync>, KVRuntimeError>;
 }
 
 #[async_trait]
-pub trait KVScannable {
+pub trait KVScannable: Send + Sync {
     async fn range_scan(
         &self,
         scan: &KVRangeScan,
-    ) -> Result<Box<dyn KVScanIterator>, KVRuntimeError>;
+    ) -> Result<Box<dyn KVScanIterator + Send + Sync>, KVRuntimeError>;
     // fn set_scan(&self, scan: SetScanParams) -> impl ScanResultIter;
 }
 
@@ -57,12 +58,13 @@ impl KVRangeScan {
     }
 }
 
+#[async_trait]
 impl KVScanOp for KVRangeScan {
-    fn scan<'a, T: KVScannable + ?Sized>(
+    async fn scan<T: KVScannable + Send + Sync + ?Sized>(
         &self,
-        scannable: &'a T,
+        scannable: &T,
     ) -> Result<Box<dyn KVScanIterator + Send + Sync>, KVRuntimeError> {
-        todo!()
+        scannable.range_scan(&self).await
     }
 }
 
@@ -73,7 +75,7 @@ pub enum KVColumnFilter {
 pub struct KVScanExecutor;
 
 impl KVScanExecutor {
-    pub fn execute(
+    pub async fn execute(
         table: &KVTableState,
         scan_op: impl KVScanOp,
     ) -> Result<ScanResultProducer, KVRuntimeError> {
@@ -83,7 +85,7 @@ impl KVScanExecutor {
         for scannable in table.list_scannable() {
             // TODO: Scannable check preconditions (bloom filters etc.)
 
-            let scan_result = scan_op.scan(scannable)?;
+            let scan_result = scan_op.scan(scannable).await?;
             result_producer.add_iter(scan_result);
         }
 

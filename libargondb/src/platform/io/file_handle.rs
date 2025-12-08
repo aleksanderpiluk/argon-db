@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use thiserror::Error;
 
 #[async_trait]
-pub trait ReadOnlyFileHandle {
+pub trait ReadOnlyFileHandle: Send + Sync {
     async fn read(&self, buf_size: usize) -> Result<ReadData, FileHandleError>;
 
     async fn seek(&mut self, pos: SeekFrom) -> Result<u64, FileHandleError>;

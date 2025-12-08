@@ -1,13 +1,9 @@
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     kv::{
-        KVSSTable, KVScanExecutor,
-        config::KVConfig,
-        factory::{self, KVFactory},
-        mutation::StructuredMutation,
-        scan::KVScanOp,
-        schema::KVTableSchema,
+        KVScanExecutor, KVScannable, config::KVConfig, factory::KVFactory,
+        mutation::StructuredMutation, scan::KVScanOp, schema::KVTableSchema,
         table_state::KVTableState,
     },
     utils::rcu::RCU,
@@ -23,11 +19,15 @@ impl KVTable {
     pub fn create(
         config: KVConfig,
         columns_schema: KVTableSchema,
-        sstables: Vec<Arc<KVSSTable>>,
+        sstables: Vec<Box<dyn KVScannable>>,
     ) -> Self {
         let factory = KVFactory::new(config);
 
         let memtable = factory.new_memtable(&columns_schema);
+        let sstables = sstables
+            .into_iter()
+            .map(|sstable| Arc::new(sstable))
+            .collect();
         let table_state = KVTableState::for_new_table(columns_schema, memtable, sstables);
 
         Self {
@@ -40,9 +40,11 @@ impl KVTable {
         todo!()
     }
 
-    pub fn scan(&self, scan_op: impl KVScanOp) {
+    pub async fn scan(&self, scan_op: impl KVScanOp) {
         let table_state = self.state.load();
-        let result = KVScanExecutor::execute(&table_state, scan_op).unwrap();
+        let result = KVScanExecutor::execute(&table_state, scan_op)
+            .await
+            .unwrap();
         todo!()
     }
 

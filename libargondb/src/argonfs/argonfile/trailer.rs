@@ -1,7 +1,7 @@
 use crate::argonfs::argonfile::ArgonfileDeserializeError;
 use crate::argonfs::argonfile::magic::ARGONFILE_MAGIC;
 
-use super::block_ptr::{ArgonfileBlockPointer, ArgonfileBlockPointerWriter};
+use super::block_ptr::ArgonfileBlockPointer;
 use super::{
     error::ArgonfileWriterError,
     utils::{ArgonfileSizeCountingWriter, ArgonfileWrite},
@@ -29,8 +29,8 @@ impl Trailer {
         let mut writer = ArgonfileSizeCountingWriter::new(w);
 
         writer.write(&u64::to_le_bytes(trailer.sstable_id))?;
-        ArgonfileBlockPointerWriter::write(&mut writer, &trailer.summary_block_ptr)?;
-        ArgonfileBlockPointerWriter::write(&mut writer, &trailer.stats_block_ptr)?;
+        ArgonfileBlockPointer::serialize(&mut writer, &trailer.summary_block_ptr)?;
+        ArgonfileBlockPointer::serialize(&mut writer, &trailer.stats_block_ptr)?;
         writer.write(ARGONFILE_MAGIC)?;
 
         Ok(writer.size())

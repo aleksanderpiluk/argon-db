@@ -2,7 +2,8 @@ use std::io::{self, Cursor, Write};
 
 use crate::{
     argonfs::argonfile::{
-        block_header::{BlockHeader, BlockHeaderReader, BlockHeaderWriter},
+        ArgonfileReaderError,
+        block_header::BlockHeader,
         block_identifier::BlockIdentifier,
         block_ptr::ArgonfileBlockPointer,
         checksum::{ChecksumAlgo, ChecksumAlgoResolver},
@@ -75,7 +76,7 @@ impl ArgonfileBlockBuilder {
         let offset = writer.offset();
         let mut writer = ArgonfileSizeCountingWriter::new(writer);
 
-        BlockHeaderWriter::write(
+        BlockHeader::serialize(
             &mut writer,
             &block_identifier,
             compressed_buffer_size as u32,
@@ -110,11 +111,11 @@ impl ArgonfileWrite for ArgonfileBlockBuilder {
 pub struct BlockReader;
 
 impl BlockReader {
-    pub fn read(&self, buf: &[u8]) -> Result<(), ()> {
+    pub fn read(&self, buf: &[u8]) -> Result<(), ArgonfileReaderError> {
         let buf_header_end_idx = BlockHeader::SIZE_SERIALIZED;
         let buf_header = &buf[0..buf_header_end_idx];
 
-        let header = BlockHeaderReader::read(buf_header).map_err(|_| ())?;
+        let header = BlockHeader::deserialize(buf_header)?;
 
         let compressed_size = header.data_compressed_size as usize;
         let buf_compressed_end_idx = buf_header_end_idx + compressed_size;
@@ -131,17 +132,13 @@ impl BlockReader {
         let buf_decompressed = vec![0u8; decompressed_size].into_boxed_slice();
 
         let mut buf_decompressed_writer = Cursor::new(buf_decompressed);
-        compression_algo
-            .decompress(buf_compressed, &mut buf_decompressed_writer)
-            .map_err(|_| ())?;
+        compression_algo.decompress(buf_compressed, &mut buf_decompressed_writer)?;
         let buf_decompressed = buf_decompressed_writer.into_inner();
 
         let checksum_type = header.checksum_type;
         let checksum_algo = ChecksumAlgoResolver::for_checksum_type(checksum_type);
 
-        checksum_algo
-            .verify_checksum(&buf_decompressed, buf_checksum)
-            .map_err(|_| ())?;
+        checksum_algo.verify_checksum(&buf_decompressed, buf_checksum)?;
 
         Ok(())
     }

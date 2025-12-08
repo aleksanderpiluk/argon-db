@@ -1,5 +1,4 @@
 mod argonfile_data_block_iter;
-mod argonfile_format_reader;
 mod argonfile_reader;
 mod block;
 mod block_header;
@@ -20,6 +19,7 @@ mod utils;
 pub use argonfile_data_block_iter::ArgonfileDataBlockIter;
 pub use argonfile_reader::ArgonfileReader;
 pub use argonfile_reader::ArgonfileReaderError;
+pub use block_ptr::ArgonfileBlockPointer;
 pub use error::ArgonfileDeserializeError;
 
 pub use trailer::Trailer;
