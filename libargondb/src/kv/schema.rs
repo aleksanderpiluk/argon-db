@@ -13,6 +13,8 @@ use crate::{
 
 #[derive(Clone)]
 pub struct KVTableSchema {
+    pub table_id: String,
+    pub table_name: String,
     pub columns: Vec<KVColumnSchema>,
 
     /** Contains IDs of columns being part of primary key in correct order */
@@ -22,6 +24,8 @@ pub struct KVTableSchema {
 
 impl KVTableSchema {
     pub fn build(
+        table_id: String,
+        table_name: String,
         columns: Vec<KVColumnSchema>,
         primary_key: Vec<u16>,
     ) -> Result<Self, KVTableSchemaBuildError> {
@@ -80,6 +84,8 @@ impl KVTableSchema {
         }
 
         Ok(Self {
+            table_id,
+            table_name,
             columns,
             primary_key,
             column_name_map,

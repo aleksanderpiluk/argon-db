@@ -14,7 +14,9 @@ impl Catalog {
         }
     }
 
-    pub fn add_table(&self, table_name: String, table: Arc<KVTable>) {
+    pub fn add_table(&self, table: Arc<KVTable>) {
+        let table_name = todo!();
+
         self.state.mutate_blocking(move |current_state| {
             let new_state = current_state.add_table(table_name, table);
 

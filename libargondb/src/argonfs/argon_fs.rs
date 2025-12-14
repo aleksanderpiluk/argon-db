@@ -9,7 +9,7 @@ use crate::{
         argonfile_sstable::{ArgonfileSSTable, ArgonfileSSTableLoadError},
         block_cache::BlockCache,
     },
-    kv::KVScannable,
+    kv::{KVScannable, schema::KVTableSchema},
     platform::io::{BoxFileSystem, FileSystemError, fs::FsFileSystem},
 };
 
@@ -35,6 +35,13 @@ impl ArgonFs {
             filesystem,
             worker_pool,
         })
+    }
+
+    pub fn scan_for_sstables(
+        &self,
+        table_schema: &KVTableSchema,
+    ) -> Result<Vec<Box<dyn KVScannable>>, ArgonFsError> {
+        todo!()
     }
 
     pub async fn scan_sstables(

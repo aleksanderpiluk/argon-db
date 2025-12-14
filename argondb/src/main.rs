@@ -1,5 +1,8 @@
 mod db_bootstrap;
 mod db_ctx;
+mod errors;
+mod init;
+mod supervisor;
 // use libargonrt::{
 //     argonrt_setup,
 //     modules::{basic_connector::BasicConnector, storage::DefaultStorageModule},

@@ -17,7 +17,7 @@ pub fn run_db_bootstrap() {
     block_on(async {
         let db_ctx = create_db_ctx();
 
-        create_argonsys_tables(&db_ctx).await;
+        // create_argonsys_tables(&db_ctx).await;
 
         create_existing_tables(&db_ctx).await;
     });
@@ -26,8 +26,13 @@ pub fn run_db_bootstrap() {
 fn create_db_ctx() -> Arc<DbCtx> {
     let catalog = Arc::new(Catalog::empty());
     let argon_fs = init_argon_fs();
+    let kv_config = KVConfig::default();
 
-    let db_ctx = Arc::new(DbCtx { catalog, argon_fs });
+    let db_ctx = Arc::new(DbCtx {
+        kv_config,
+        catalog,
+        argon_fs,
+    });
 
     db_ctx
 }
@@ -38,35 +43,6 @@ fn init_argon_fs() -> Arc<ArgonFs> {
     let argon_fs = ArgonFs::init(config).unwrap();
 
     Arc::new(argon_fs)
-}
-
-async fn create_argonsys_tables(db_ctx: &DbCtx) {
-    let catalog = &db_ctx.catalog;
-    let argon_fs = &db_ctx.argon_fs;
-
-    let kv_config = KVConfig::default();
-
-    let sstables = argon_fs.scan_sstables("_argonsys_tables").await.unwrap();
-    let argonsys_tables_table = KVTable::create(
-        kv_config.clone(),
-        get_argonsys_tables_table_schema(),
-        sstables,
-    );
-    catalog.add_table(
-        "_argonsys_tables".to_string(),
-        Arc::new(argonsys_tables_table),
-    );
-
-    let sstables = argon_fs.scan_sstables("_argonsys_columns").await.unwrap();
-    let argonsys_columns_table = KVTable::create(
-        kv_config.clone(),
-        get_argonsys_columns_table_schema(),
-        sstables,
-    );
-    catalog.add_table(
-        "_argonsys_columns".to_string(),
-        Arc::new(argonsys_columns_table),
-    );
 }
 
 async fn create_existing_tables(db_ctx: &DbCtx) {
@@ -95,39 +71,3 @@ async fn create_existing_tables(db_ctx: &DbCtx) {
 
 // todo!()
 // }
-
-fn get_argonsys_tables_table_schema() -> KVTableSchema {
-    KVTableSchema::build(
-        vec![KVColumnSchema {
-            column_id: 1,
-            column_name: "table_name".to_string(),
-            column_type: ColumnTypeCode::Bytes,
-        }],
-        vec![1],
-    )
-    .unwrap()
-}
-
-fn get_argonsys_columns_table_schema() -> KVTableSchema {
-    KVTableSchema::build(
-        vec![
-            KVColumnSchema {
-                column_id: 1,
-                column_name: "table_name".to_string(),
-                column_type: ColumnTypeCode::Bytes,
-            },
-            KVColumnSchema {
-                column_id: 2,
-                column_name: "column_id".to_string(),
-                column_type: ColumnTypeCode::Bytes,
-            },
-            KVColumnSchema {
-                column_id: 3,
-                column_name: "column_name".to_string(),
-                column_type: ColumnTypeCode::Bytes,
-            },
-        ],
-        vec![1, 2],
-    )
-    .unwrap()
-}

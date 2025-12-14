@@ -12,12 +12,12 @@ use thiserror::Error;
 use crate::{
     argonfs::{
         argon_fs_worker_pool::ArgonFsWorkerPool,
-        argonfile::{ArgonfileDataBlockIter, ArgonfileReader, ArgonfileReaderError},
+        argonfile::{Argonfile, ArgonfileDataBlockIter, ArgonfileReader, ArgonfileReaderError},
         block_cache::{BlockCache, BlockSharedGuard, BlockTag, BlockView},
     },
     kv::{
-        KVRangeScan, KVRuntimeError, KVSSTableBlockPtr, KVSSTableDataBlockIter, KVSSTableStats,
-        KVSSTableSummaryIndex, KVScanIterator, KVScanIteratorItem, KVScannable,
+        KVRangeScan, KVRuntimeError, KVSSTableBlockPtr, KVSSTableDataBlockIter, KVScanIterator,
+        KVScanIteratorItem, KVScannable,
     },
     platform::io::{BoxFileRef, FileRef},
 };
@@ -25,9 +25,7 @@ use crate::{
 pub struct ArgonfileSSTable {
     block_cache: Arc<BlockCache>,
     file_ref: BoxFileRef,
-    sstable_id: u64,
-    summary_index: KVSSTableSummaryIndex,
-    stats: KVSSTableStats,
+    argonfile: Argonfile,
     worker_pool: Arc<ArgonFsWorkerPool>,
 }
 
@@ -42,17 +40,16 @@ impl ArgonfileSSTable {
 
         let trailer = reader.read_trailer().await?;
         let sstable_id = trailer.sstable_id;
-        let summary_index = reader
-            .read_summary_block(&trailer.summary_block_ptr)
-            .await?;
-        let stats = reader.read_stats_block(&trailer.stats_block_ptr).await?;
+
+        let summary_index = reader.read_summary_index().await?;
+        let stats = reader.read_stats().await?;
+
+        let argonfile = todo!();
 
         Ok(Self {
             block_cache,
             file_ref,
-            sstable_id,
-            summary_index,
-            stats,
+            argonfile,
             worker_pool,
         })
     }
@@ -71,10 +68,18 @@ pub enum ArgonfileSSTableLoadError {
 impl KVScannable for ArgonfileSSTable {
     async fn range_scan(
         &self,
-        scan: &KVRangeScan,
+        range_scan: &KVRangeScan,
     ) -> Result<Box<dyn KVScanIterator + Send + Sync>, KVRuntimeError> {
-        // 1. Create "scan plan" by iterating through always loaded index and take blocks to scan through
-        let blocks = self.summary_index.get_range_scan_blocks(scan);
+        let is_intersecting = self.argonfile.stats.is_range_scan_intersecting(range_scan);
+        if !is_intersecting {
+            todo!("RETURN EMPTY");
+        }
+
+        let block_ptrs = self
+            .argonfile
+            .summary_index
+            .get_blocks_for_range_scan(range_scan);
+
         // 2. Create SSTableScanIter and return it - iterator makes proper scan
         let iter = ScanIterator::new(
             self.block_cache.clone(),

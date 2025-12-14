@@ -18,13 +18,13 @@ use crate::{
 };
 
 struct ArgonfileBuilder<'a, W: Write + Send> {
-    config: &'a ArgonfileConfig,
+    config: &'a ArgonfileBuilderConfig,
     orchestrator: BlocksBuildingOrchestrator<'a, W>,
 }
 
 impl<'a, W: Write + Send> ArgonfileBuilder<'a, W> {
     pub fn begin(
-        config: &'a ArgonfileConfig,
+        config: &'a ArgonfileBuilderConfig,
         writer: W,
         mutations_count: usize,
     ) -> Result<Self, ()> {
@@ -70,7 +70,7 @@ impl<'a, W: Write + Send> KVSSTableBuilder for ArgonfileBuilder<'a, W> {
 }
 
 struct BlocksBuildingOrchestrator<'a, W: Write> {
-    config: &'a ArgonfileConfig,
+    config: &'a ArgonfileBuilderConfig,
     writer: ArgonfileOffsetCountingWriteWrapper<W>,
 
     stats_builder: ArgonfileStatsBuilder,
@@ -82,7 +82,7 @@ struct BlocksBuildingOrchestrator<'a, W: Write> {
 
 impl<'a, W: Write> BlocksBuildingOrchestrator<'a, W> {
     fn new(
-        config: &'a ArgonfileConfig,
+        config: &'a ArgonfileBuilderConfig,
         write: ArgonfileOffsetCountingWriteWrapper<W>,
         stats_builder: ArgonfileStatsBuilder,
         summary_builder: ArgonfileSummaryBuilder,
@@ -219,5 +219,19 @@ impl<'a, W: Write> BlocksBuildingOrchestrator<'a, W> {
     fn new_data_block(&mut self, mutation: &impl KVMutation) {
         self.block_builder = Some(ArgonfileBlockBuilder::new(self.config.data_block_size));
         self.summary_builder.next_block_with_min_key(mutation);
+    }
+}
+
+pub struct ArgonfileBuilderConfig {
+    pub data_block_size: usize,
+}
+
+const DEFAULT_DATA_BLOCK_SIZE: usize = 8 * 1024;
+
+impl Default for ArgonfileBuilderConfig {
+    fn default() -> Self {
+        Self {
+            data_block_size: DEFAULT_DATA_BLOCK_SIZE,
+        }
     }
 }

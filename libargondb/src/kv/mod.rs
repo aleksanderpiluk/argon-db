@@ -26,6 +26,4 @@ pub use scan::KVScanIteratorItem;
 pub use scan::KVScannable;
 pub use sstable::KVSSTable;
 pub use sstable::KVSSTableBlockPtr;
-pub use sstable::KVSSTableStats;
-pub use sstable::KVSSTableSummaryIndex;
 pub use table::KVTable;

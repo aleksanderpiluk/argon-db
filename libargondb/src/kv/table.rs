@@ -18,17 +18,17 @@ pub struct KVTable {
 impl KVTable {
     pub fn create(
         config: KVConfig,
-        columns_schema: KVTableSchema,
+        table_schema: KVTableSchema,
         sstables: Vec<Box<dyn KVScannable>>,
     ) -> Self {
         let factory = KVFactory::new(config);
 
-        let memtable = factory.new_memtable(&columns_schema);
+        let memtable = factory.new_memtable(&table_schema);
         let sstables = sstables
             .into_iter()
             .map(|sstable| Arc::new(sstable))
             .collect();
-        let table_state = KVTableState::for_new_table(columns_schema, memtable, sstables);
+        let table_state = KVTableState::for_new_table(table_schema, memtable, sstables);
 
         Self {
             factory,

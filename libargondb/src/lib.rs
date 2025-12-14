@@ -10,4 +10,5 @@ mod wal;
 
 pub use argonfs::ArgonFs;
 pub use argonfs::ArgonFsConfig;
+pub use argonfs::ArgonFsError;
 pub use catalog::Catalog;

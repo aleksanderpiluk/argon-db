@@ -6,9 +6,9 @@ use super::Trailer;
 use crate::{
     argonfs::argonfile::{
         ArgonfileDeserializeError, block::BlockReader, block_ptr::ArgonfileBlockPointer,
-        checksum::ChecksumError, compression::CompressionError, stats::Stats, summary::Summary,
+        checksum::ChecksumError, compression::CompressionError, stats::Stats,
+        summary::SummaryIndex,
     },
-    kv::{KVSSTableStats, KVSSTableSummaryIndex},
     platform::io::{FileHandleError, ReadData, ReadOnlyFileHandle},
 };
 
@@ -33,27 +33,31 @@ impl ArgonfileReader {
         Ok(trailer)
     }
 
-    pub async fn read_summary_block(
-        &mut self,
-        block_ptr: &ArgonfileBlockPointer,
-    ) -> Result<KVSSTableSummaryIndex, ArgonfileReaderError> {
-        let buf = self.read_block(block_ptr).await?;
+    pub async fn read_summary_index(&mut self) -> Result<SummaryIndex, ArgonfileReaderError> {}
 
-        let summary_index = Summary::deserialize(buf.as_ref())?;
+    pub async fn read_stats(&mut self) -> Result<Stats, ArgonfileReaderError> {}
 
-        Ok(summary_index.into())
-    }
+    // pub async fn read_summary_block(
+    //     &mut self,
+    //     block_ptr: &ArgonfileBlockPointer,
+    // ) -> Result<KVSSTableSummaryIndex, ArgonfileReaderError> {
+    //     let buf = self.read_block(block_ptr).await?;
 
-    pub async fn read_stats_block(
-        &mut self,
-        block_ptr: &ArgonfileBlockPointer,
-    ) -> Result<KVSSTableStats, ArgonfileReaderError> {
-        let buf = self.read_block(block_ptr).await?;
+    //     let summary_index = Summary::deserialize(buf.as_ref())?;
 
-        let stats = Stats::deserialize(buf.as_ref())?;
+    //     Ok(summary_index.into())
+    // }
 
-        Ok(stats.into())
-    }
+    // pub async fn read_stats_block(
+    //     &mut self,
+    //     block_ptr: &ArgonfileBlockPointer,
+    // ) -> Result<KVSSTableStats, ArgonfileReaderError> {
+    //     let buf = self.read_block(block_ptr).await?;
+
+    //     let stats = Stats::deserialize(buf.as_ref())?;
+
+    //     Ok(stats.into())
+    // }
 
     pub async fn read_block(
         &mut self,

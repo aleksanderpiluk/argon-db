@@ -1,11 +1,11 @@
-use crate::argonfs::argonfile::ArgonfileDeserializeError;
-use crate::argonfs::argonfile::magic::ARGONFILE_MAGIC;
+use crate::argonfs::argonfile::error::ArgonfileParseResult;
 
-use super::block_ptr::ArgonfileBlockPointer;
 use super::{
     error::ArgonfileWriterError,
     utils::{ArgonfileSizeCountingWriter, ArgonfileWrite},
 };
+
+pub const ARGONFILE_MAGIC: &'static [u8; 8] = b"ARGNFILE";
 
 pub struct Trailer {
     pub sstable_id: u64,
@@ -16,10 +16,16 @@ pub struct Trailer {
 impl Trailer {
     pub const SERIALIZED_SIZE: usize = 36;
 
-    pub fn deserialize(buf: &[u8]) -> Result<Trailer, ArgonfileDeserializeError> {
-        // let sstable_id = u64::from_be_bytes(bytes)?;
+    pub fn parse(buf: &[u8]) -> ArgonfileParseResult<Trailer> {
+        let sstable_id = u64::from_be_bytes(bytes)?;
+        let stats_block_ptr = todo!();
+        let summary_block_ptr = todo!();
 
-        todo!()
+        Ok(Self {
+            sstable_id,
+            stats_block_ptr,
+            summary_block_ptr,
+        })
     }
 
     pub fn serialize(

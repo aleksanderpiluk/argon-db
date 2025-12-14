@@ -12,18 +12,18 @@ use super::scan::KVScannable;
 
 pub struct KVSSTable {
     reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>,
-    summary_index: KVSSTableSummaryIndex,
-    stats: KVSSTableStats,
+    // summary_index: KVSSTableSummaryIndex,
+    // stats: KVSSTableStats,
 }
 
 impl KVSSTable {
     pub async fn from_reader(reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>) -> Self {
-        let (stats, summary_index) = reader.read_stats_and_index().await;
+        // let (stats, summary_index) = reader.read_stats_and_index().await;
 
         Self {
             reader,
-            summary_index,
-            stats,
+            // summary_index,
+            // stats,
         }
     }
 }
@@ -34,25 +34,20 @@ impl Debug for KVSSTable {
     }
 }
 
-pub struct KVSSTableStats {
-    pub min_row: Box<[u8]>,
-    pub max_row: Box<[u8]>,
-}
+// pub struct KVSSTableSummaryIndex {
+//     pub entries: Vec<KVSSTableSummaryIndexEntry>,
+// }
 
-pub struct KVSSTableSummaryIndex {
-    pub entries: Vec<KVSSTableSummaryIndexEntry>,
-}
+// impl KVSSTableSummaryIndex {
+//     pub fn get_range_scan_blocks(&self, scan: &KVRangeScan) -> Vec<KVSSTableBlockPtr> {
+//         todo!()
+//     }
+// }
 
-impl KVSSTableSummaryIndex {
-    pub fn get_range_scan_blocks(&self, scan: &KVRangeScan) -> Vec<KVSSTableBlockPtr> {
-        todo!()
-    }
-}
-
-pub struct KVSSTableSummaryIndexEntry {
-    min_key: Box<[u8]>,
-    pointer: (),
-}
+// pub struct KVSSTableSummaryIndexEntry {
+//     min_key: Box<[u8]>,
+//     pointer: (),
+// }
 
 // #[async_trait]
 // impl KVScannable for KVSSTable {
@@ -144,7 +139,7 @@ impl KVScanIterator for KVSSTableScanIter {
 
 #[async_trait]
 pub trait KVSSTableReader {
-    async fn read_stats_and_index(&self) -> (KVSSTableStats, KVSSTableSummaryIndex);
+    // async fn read_stats_and_index(&self) -> (KVSSTableStats, KVSSTableSummaryIndex);
 
     async fn read_data_block(
         &self,

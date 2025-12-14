@@ -2,10 +2,6 @@ use std::{array::TryFromSliceError, io};
 
 use thiserror::Error;
 
-use crate::argonfs::argonfile::{
-    checksum::ChecksumTypeParseError, compression::CompressionTypeParseError,
-};
-
 #[derive(Debug)]
 pub enum ArgonfileBuilderError {
     WriterError(ArgonfileWriterError),
@@ -41,3 +37,7 @@ pub enum ArgonfileDeserializeError {
     #[error("conversion to type error")]
     TryFromSliceError(#[from] TryFromSliceError),
 }
+
+pub struct ArgonfileParseError;
+
+pub type ArgonfileParseResult<T> = Result<T, ArgonfileParseError>;

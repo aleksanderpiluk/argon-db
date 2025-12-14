@@ -57,7 +57,12 @@ impl CreateTableOp {
             primary_key.push(*column_id);
         }
 
+        let table_id = todo!();
+        let table_name = todo!();
+
         let columns_schema = KVTableSchema {
+            table_id,
+            table_name,
             columns,
             column_name_map,
             primary_key,

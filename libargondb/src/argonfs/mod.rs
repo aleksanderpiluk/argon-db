@@ -6,4 +6,5 @@ mod block_cache;
 mod config;
 
 pub use argon_fs::ArgonFs;
+pub use argon_fs::ArgonFsError;
 pub use config::ArgonFsConfig;
