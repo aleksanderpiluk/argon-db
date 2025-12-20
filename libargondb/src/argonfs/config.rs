@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::{argonfs::block_cache::BlockCacheConfig, platform::io::fs::FsFileSystemConfig};
+use crate::argonfs::{block_cache::BlockCacheConfig, local_fs::FsFileSystemConfig};
 
 #[derive(Debug, Clone)]
 pub struct ArgonFsConfig {

@@ -1,8 +1,7 @@
 use std::io::Write;
 
-use crate::argonfs::argonfile::checksum::ChecksumType;
-
 use super::ChecksumError;
+use super::ChecksumType;
 
 pub trait ChecksumAlgo {
     fn checksum_type(&self) -> ChecksumType;

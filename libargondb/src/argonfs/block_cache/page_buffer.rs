@@ -195,15 +195,21 @@ impl BlockSharedGuard {
     }
 
     pub fn to_exclusive(self) -> BlockExclusiveGuard {
-        todo!()
+        let header = self.header();
+        drop(self);
+
+        unsafe { BlockExclusiveGuard::acquire_for(header) }
     }
 
-    pub fn try_to_exclusive(self) -> Result<BlockExclusiveGuard, ()> {
-        todo!()
+    pub fn try_to_exclusive(self) -> Result<BlockExclusiveGuard, TryExclusiveLockError> {
+        let header = self.header();
+        drop(self);
+
+        unsafe { BlockExclusiveGuard::try_acquire_for(header) }
     }
 
-    pub fn to_boxed_view(self) -> Box<BlockView> {
-        todo!()
+    pub fn to_block_view(self) -> Box<BlockView> {
+        Box::new(BlockView::new(self))
     }
 }
 

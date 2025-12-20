@@ -1,39 +1,49 @@
-mod db_bootstrap;
-mod db_ctx;
+mod connectors;
 mod errors;
+mod exit;
 mod init;
+mod ops;
+mod shutdown;
+mod signals_handler;
 mod supervisor;
-// use libargonrt::{
-//     argonrt_setup,
-//     modules::{basic_connector::BasicConnector, storage::DefaultStorageModule},
-// };
+mod system_tables;
 
-// fn main() {
-//     let mut rt = argonrt_setup();
+use libargondb::ArgonFsMemtableFlusher;
 
-//     rt.load_module(DefaultStorageModule::new());
-//     rt.load_module(BasicConnector::new());
-// }
-
-use crate::db_bootstrap::run_db_bootstrap;
+use crate::{
+    connectors::grpc::init_connector_grpc,
+    errors::{OkOrAbort, OrCriticalError},
+    init::run_init_thread,
+    shutdown::run_shutdown_thread,
+    signals_handler::handle_signals,
+    supervisor::{Lifecycle, SystemCtx, run_supervisor_thread},
+};
 
 fn main() {
-    run_db_bootstrap();
+    println!("argondb is starting");
+    let db_ctx = run_init_thread().ok_or_abort();
 
-    // let sstable_file_paths: Vec<Path> = vec![];
-    // let sstables: Vec<KVSSTable> = sstable_file_paths
-    //     .iter()
-    //     .map(|path| argonfs_factory.open_sstable(path))
-    //     // .map(|path| CachedSSTableReader::new(block_cache.clone(), ArgonfileReader::new(path)))
-    //     .map(|reader| KVSSTable::from_reader(reader))
-    //     .collect();
+    let memtable_flusher_handle = ArgonFsMemtableFlusher::new(db_ctx.clone());
 
-    // todo!("Add mutations");
-    // let x = KVScanExecutor::execute(&table, KVRangeScan::new(from, to, columns));
+    let connector_handle = init_connector_grpc(db_ctx.clone())
+        .ok_or_critical_err()
+        .ok_or_abort();
+
+    let system_ctx = SystemCtx {
+        db_ctx: db_ctx.clone(),
+        memtable_flusher_handle,
+        connector_handles: vec![connector_handle],
+    };
+
+    run_supervisor_thread();
+
+    println!("database is running, watching for signals");
+    handle_signals(&Lifecycle {}).unwrap();
+
+    run_shutdown_thread(system_ctx).ok_or_abort();
 }
 
-// fn main() {
-//     let op = CreateTableOp {
+//  let op = CreateTableOp {
 //         table_name: "test_table".to_owned(),
 //         columns: vec![
 //             CreateTableOpColumn {
@@ -42,16 +52,16 @@ fn main() {
 //             },
 //             CreateTableOpColumn {
 //                 column_name: "first_name".to_owned(),
-//                 column_type: ColumnTypeCode::Bytes,
+//                 column_type: ColumnTypeCode::Text,
 //             },
 //             CreateTableOpColumn {
 //                 column_name: "last_name".to_owned(),
-//                 column_type: ColumnTypeCode::Bytes,
+//                 column_type: ColumnTypeCode::Text,
 //             },
 //         ],
 //         primary_key: vec!["id".to_owned()],
 //     };
-//     let table = op.execute().unwrap();
+//     let table = op.execute(&db_ctx).unwrap();
 
 //     let op = InsertOp {
 //         timestamp: 10,
@@ -75,11 +85,6 @@ fn main() {
 //         op.execute(&table).await.unwrap();
 //     });
 
-//     println!("{:#?}", table);
-
 //     let op = SelectOp {};
 
-//     async_io::block_on(async {
-//         op.execute(&table).await;
-//     });
-// }
+//     async_io::block_on(op.execute(&table));

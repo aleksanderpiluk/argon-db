@@ -2,7 +2,7 @@ use std::io::Write;
 
 use crc32c::crc32c;
 
-use crate::argonfs::argonfile::checksum::{ChecksumAlgo, ChecksumError, ChecksumType};
+use super::super::{ChecksumAlgo, ChecksumError, ChecksumType};
 
 pub struct ChecksumAlgoCRC32;
 
@@ -26,7 +26,7 @@ impl ChecksumAlgo for ChecksumAlgoCRC32 {
             .try_into()
             .map_err(|_| ChecksumError::ChecksumMalformed)?;
 
-        let given_checksum = u32::from_be_bytes(checksum_bytes);
+        let given_checksum = u32::from_le_bytes(checksum_bytes);
         let data_checksum = crc32c(data);
 
         if data_checksum == given_checksum {

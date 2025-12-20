@@ -1,2 +1,2 @@
 [workspace]
-members = ["argondb", "libargondb", "libargonfile", "libargonrt"]
+members = ["argondb", "libargonconnector-grpc", "libargondb", "libargonfile", "libargonrt"]

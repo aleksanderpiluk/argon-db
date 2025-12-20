@@ -157,17 +157,21 @@ impl BlockLockState {
     }
 
     fn check_flag(&self, flag: BlockLockStateFlags) -> bool {
-        self.0 & flag.bits() != 0
+        (self.0 & flag.bits()) != 0
     }
 
     fn set_flag(&mut self, flag: BlockLockStateFlags) {
-        assert!(self.check_flag(flag), "flag {:?} already set", flag);
+        assert!(
+            self.check_flag(flag) == false,
+            "flag {:?} already set",
+            flag
+        );
 
         self.0 |= flag.bits();
     }
 
     fn clear_flag(&mut self, flag: BlockLockStateFlags) {
-        assert!(!self.check_flag(flag), "flag {:?} not set", flag);
+        assert!(self.check_flag(flag) == true, "flag {:?} not set", flag);
 
         self.0 &= (!flag).bits();
     }

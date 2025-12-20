@@ -1,13 +1,16 @@
-use crate::kv::KVSSTableBlockPtr;
+use crate::{
+    argonfs::argonfile::BlockPointer,
+    kv::{KVSSTableBlockPtr, ObjectId},
+};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct BlockTag {
-    pub sstable_id: u64,
-    pub block_ptr: KVSSTableBlockPtr,
+    pub sstable_id: ObjectId,
+    pub block_ptr: BlockPointer,
 }
 
 impl BlockTag {
-    pub fn new(sstable_id: u64, block_ptr: KVSSTableBlockPtr) -> Self {
+    pub fn new(sstable_id: ObjectId, block_ptr: BlockPointer) -> Self {
         Self {
             sstable_id,
             block_ptr,

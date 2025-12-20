@@ -1,5 +1,8 @@
 use thiserror::Error;
 
+use crate::argonfs::argonfile::error::ArgonfileParseError;
+
+#[derive(Debug, Clone, Copy)]
 pub enum CompressionType {
     Uncompressed,
 }
@@ -26,3 +29,9 @@ impl TryFrom<u8> for CompressionType {
 #[derive(Error, Debug)]
 #[error("invalid serialized compression type {0}")]
 pub struct CompressionTypeParseError(u8);
+
+impl From<CompressionTypeParseError> for ArgonfileParseError {
+    fn from(value: CompressionTypeParseError) -> Self {
+        todo!()
+    }
+}

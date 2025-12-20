@@ -1,5 +1,8 @@
 use thiserror::Error;
 
+use crate::argonfs::argonfile::error::ArgonfileParseError;
+
+#[derive(Debug, Clone, Copy)]
 pub enum ChecksumType {
     CRC32,
 }
@@ -26,3 +29,9 @@ impl Into<u8> for ChecksumType {
 #[derive(Error, Debug)]
 #[error("invalid serialized checksum type {0}")]
 pub struct ChecksumTypeParseError(u8);
+
+impl From<ChecksumTypeParseError> for ArgonfileParseError {
+    fn from(value: ChecksumTypeParseError) -> Self {
+        todo!()
+    }
+}

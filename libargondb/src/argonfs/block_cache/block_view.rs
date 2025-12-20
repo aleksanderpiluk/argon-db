@@ -2,23 +2,33 @@ use std::slice;
 
 use bytes::Buf;
 
+use crate::argonfs::block_cache::page::PageState;
+
 use super::block_page_map::BlockPageMap;
 use super::page_buffer::BlockSharedGuard;
 
 pub struct BlockView {
     guard: BlockSharedGuard,
     page_map: BlockPageMap,
-    block_len: usize,
+    total_pages_size: usize,
+    loaded_block_size: Option<usize>,
     pos: usize,
 }
 
 impl BlockView {
     pub fn new(guard: BlockSharedGuard) -> Self {
-        let (page_map, block_len) = unsafe { BlockPageMap::new(guard.header()) };
+        let (page_map, total_pages_size) = unsafe { BlockPageMap::new(guard.header()) };
+        let loaded_block_size = if let PageState::LoadedBlock { block_size, .. } = guard.state {
+            Some(block_size)
+        } else {
+            None
+        };
+
         Self {
             guard,
             page_map,
-            block_len,
+            total_pages_size,
+            loaded_block_size,
             pos: 0,
         }
     }
@@ -30,7 +40,13 @@ impl BlockView {
 
 impl Buf for BlockView {
     fn remaining(&self) -> usize {
-        self.block_len - self.pos
+        let total_size = if let Some(block_size) = self.loaded_block_size {
+            block_size
+        } else {
+            self.total_pages_size
+        };
+
+        total_size - self.pos
     }
 
     fn chunk(&self) -> &[u8] {

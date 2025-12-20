@@ -1,14 +1,22 @@
 #![warn(clippy::pedantic)]
 mod argonfs;
 mod catalog;
-pub mod kv;
-mod module;
+mod connector;
+mod core;
+mod db_ctx;
 pub mod ops;
-mod platform;
 mod utils;
 mod wal;
+
+pub use core::kv;
+pub use core::persistence;
 
 pub use argonfs::ArgonFs;
 pub use argonfs::ArgonFsConfig;
 pub use argonfs::ArgonFsError;
+pub use argonfs::ArgonFsMemtableFlusher;
+pub use argonfs::ArgonFsMemtableFlusherHandle;
 pub use catalog::Catalog;
+pub use connector::ConnectorError;
+pub use connector::ConnectorHandle;
+pub use db_ctx::DbCtx;

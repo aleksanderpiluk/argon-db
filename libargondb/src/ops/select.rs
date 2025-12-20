@@ -1,6 +1,4 @@
-use crate::kv::{
-    KVColumnFilter, KVRangeScan, KVScanExecutor, KVTable, primary_key::KVPrimaryKeyMarker,
-};
+use crate::kv::{KVColumnFilter, KVRangeScan, KVRowIter, KVTable, primary_key::KVPrimaryKeyMarker};
 
 pub struct SelectOp {}
 
@@ -10,10 +8,11 @@ impl SelectOp {
         let to = KVPrimaryKeyMarker::End;
         let scan_params = KVRangeScan::new(from, to, KVColumnFilter::All);
 
-        table.scan(scan_params);
-        todo!()
-        // let table_state = table.load_state();
-        // KVScanExecutor::execute(&table_state, scan_params).unwrap();
+        let mut scan = table.scan(scan_params).await.unwrap();
+
+        while let Some(row) = scan.next_row().await.unwrap() {
+            println!("{:?}", row);
+        }
     }
 }
 

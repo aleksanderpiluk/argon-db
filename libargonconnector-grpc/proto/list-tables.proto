@@ -1,0 +1,7 @@
+syntax = "proto3";
+package argondb;
+import "types.proto";
+
+message ListTablesResponse {
+    repeated Table tables = 1;
+}

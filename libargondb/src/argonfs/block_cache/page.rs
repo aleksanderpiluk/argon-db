@@ -199,6 +199,9 @@ impl PageHeader {
             PageState::OverflowPage {
                 next_overflow_page, ..
             } => *next_overflow_page,
+            PageState::LoadedBlock {
+                next_overflow_page, ..
+            } => *next_overflow_page,
             _ => panic!("attempt of getting next_over_page in invalid page state"),
         }
     }

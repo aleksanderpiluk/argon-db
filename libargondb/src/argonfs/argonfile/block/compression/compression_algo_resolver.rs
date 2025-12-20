@@ -1,5 +1,4 @@
-use crate::argonfs::argonfile::compression::CompressionAlgo;
-
+use super::CompressionAlgo;
 use super::CompressionType;
 use super::algo;
 

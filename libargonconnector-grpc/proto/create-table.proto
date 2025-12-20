@@ -1,0 +1,20 @@
+syntax = "proto3";
+package argondb;
+
+enum CreateTableRequestColumnType {
+    Bytes = 0;
+    Text = 1;
+    U16 = 2;
+    U16Array = 3;
+}
+
+message CreateTableRequestColumn {
+    string column_name = 1;
+    CreateTableRequestColumnType column_type = 2;
+}
+
+message CreateTableRequest {
+    string table_name = 1;
+    repeated CreateTableRequestColumn columns = 2;
+    repeated string primary_key = 3;
+}

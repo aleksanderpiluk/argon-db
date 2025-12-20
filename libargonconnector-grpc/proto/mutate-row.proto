@@ -1,0 +1,41 @@
+syntax = "proto3";
+package argondb;
+
+message Mutation {
+    oneof mutation {
+        PutCell put_cell = 1;
+        DeleteCell delete_cell = 2;
+        DeleteColumn delete_column = 3;
+        DeleteFamily delete_family = 4;
+    }
+}
+
+message MutateRowRequest {
+    string table_name = 1;
+    string row = 2;
+    repeated Mutation mutations = 3;
+}
+
+message PutCell {
+    string family_name = 1;
+    string column_name = 2;
+    int64 timestamp = 3;
+    bytes value = 4;
+}
+
+message DeleteCell {
+    string family_name = 1;
+    string column_name = 2;
+    int64 timestamp = 3;
+}
+
+message DeleteColumn {
+    string family_name = 1;
+    string column_name = 2;
+    int64 timestamp = 3;
+}
+
+message DeleteFamily {
+    string family_name = 1;
+    int64 timestamp = 2;
+}
