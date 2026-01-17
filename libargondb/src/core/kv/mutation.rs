@@ -1,6 +1,8 @@
 use crate::kv::{
+    KVTableSchema,
+    column_type::KVColumnTypeUtils,
     error::KVRuntimeError,
-    primary_key::{KVPrimaryKeyComparator, KVPrimaryKeySchema},
+    primary_key::{KVPrimaryKeyComparator, KVPrimaryKeySchema, KVPrimaryKeyUtils},
 };
 use bytemuck::{CheckedBitPattern, NoUninit, bytes_of, checked, from_bytes};
 use std::{cmp::Ordering, io::Write};
@@ -40,6 +42,17 @@ impl TryFrom<u8> for MutationType {
             4 => Ok(MutationType::Delete),
             128 => Ok(MutationType::End),
             _ => Err(()),
+        }
+    }
+}
+
+impl std::fmt::Display for MutationType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Start => write!(f, "Start"),
+            Self::Put => write!(f, "Put"),
+            Self::Delete => write!(f, "Delete"),
+            Self::End => write!(f, "End"),
         }
     }
 }
@@ -262,5 +275,21 @@ impl MutationUtils {
 
     pub fn as_dyn<T: KVMutation + Send + Sync>(mutation: &T) -> &(dyn KVMutation + Send + Sync) {
         mutation
+    }
+
+    pub fn debug_fmt(schema: &KVTableSchema, mutation: &dyn KVMutation) -> Result<String, ()> {
+        let column = schema.lookup_by_column_id(mutation.column_id()).ok_or(())?;
+        let primary_key = KVPrimaryKeyUtils::debug_fmt(schema, mutation.primary_key())?;
+
+        let out = format!(
+            "KVMutation(primary_key={}, ts={}, column={}, type={}, value={})",
+            primary_key,
+            mutation.timestamp(),
+            column.column_name,
+            mutation.mutation_type(),
+            KVColumnTypeUtils::debug_fmt(column.column_type, mutation.value())
+        );
+
+        Ok(out)
     }
 }

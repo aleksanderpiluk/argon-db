@@ -81,6 +81,7 @@ impl std::fmt::Display for KVRuntimeError {
 
 #[derive(Debug, Clone, Copy)]
 pub enum KVRuntimeErrorKind {
+    OperationFailure,
     IndexOutOfBounds,
     DataMalformed,
     OperationNotAllowed,
@@ -89,6 +90,7 @@ pub enum KVRuntimeErrorKind {
 impl std::fmt::Display for KVRuntimeErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::OperationFailure => write!(f, "OperationFailure"),
             Self::IndexOutOfBounds => write!(f, "IndexOutOfBounds"),
             Self::DataMalformed => write!(f, "DataMalformed"),
             Self::OperationNotAllowed => write!(f, "OperationNotAllowed"),

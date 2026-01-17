@@ -34,7 +34,7 @@ impl FromStr for KVTableName<'_> {
         }
 
         for c in s.chars() {
-            let is_valid_char = c.is_ascii_lowercase() || c == '_';
+            let is_valid_char = c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit();
 
             if !is_valid_char {
                 return Err(KVTableNameConversionError::new(s));

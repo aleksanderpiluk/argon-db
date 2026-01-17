@@ -26,6 +26,14 @@ impl Into<u8> for ChecksumType {
     }
 }
 
+impl std::fmt::Display for ChecksumType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::CRC32 => write!(f, "CRC32"),
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 #[error("invalid serialized checksum type {0}")]
 pub struct ChecksumTypeParseError(u8);

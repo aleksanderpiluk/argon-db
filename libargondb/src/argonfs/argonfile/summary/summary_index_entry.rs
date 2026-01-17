@@ -4,6 +4,7 @@ use crate::argonfs::argonfile::{
     utils::{ArgonfileSizeCountingWriter, ArgonfileWrite},
 };
 
+#[derive(Debug)]
 pub struct SummaryIndexEntry {
     pub block_ptr: BlockPointer,
     pub key: Box<[u8]>,

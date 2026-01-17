@@ -1,0 +1,74 @@
+argondb is starting
+spawning init thread
+init thread - running initialization procedure
+argonfs - instance snapshot file not found
+init thread - initializing instance with state snapshot KVInstanceStateSnapshot { object_id_generator_state: 0 }
+init thread - database context initialized
+creating new memtable[object_id=0] for table _argonsys_tables[table_id=_argsys_tbls]
+creating new memtable[object_id=1] for table _argonsys_columns[table_id=_argsys_cols]
+init thread - system tables initialized
+init thread - found 0 user tables
+init thread - user tables initialized
+init thread - initialization finished
+init thread joined successfully
+gprc connector - starting server on address 0.0.0.0:50051
+grpc server task spawned
+database is running, watching for signals
+creating new memtable[object_id=2] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=3] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=2]
+flushing memtable[object_id=2] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=4] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=3]
+flushing memtable[object_id=3] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=5] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=4]
+flushing memtable[object_id=4] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=6] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=5]
+flushing memtable[object_id=5] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=7] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=6]
+flushing memtable[object_id=6] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=8] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=7]
+flushing memtable[object_id=7] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=9] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=8]
+flushing memtable[object_id=8] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=10] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=9]
+flushing memtable[object_id=9] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=11] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=10]
+flushing memtable[object_id=10] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=12] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=11]
+flushing memtable[object_id=11] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=13] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=12]
+flushing memtable[object_id=12] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=14] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=13]
+flushing memtable[object_id=13] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=15] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=14]
+flushing memtable[object_id=14] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=16] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=15]
+flushing memtable[object_id=15] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=17] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=16]
+flushing memtable[object_id=16] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=18] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=17]
+flushing memtable[object_id=17] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=19] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=18]
+flushing memtable[object_id=18] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=20] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=19]
+flushing memtable[object_id=19] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+creating new memtable[object_id=21] for table bench_table_0[table_id=irmtjillsmxilrcovzgh]
+requesting flush for memtable[object_id=20]
+flushing memtable[object_id=20] of table bench_table_0[table_id=irmtjillsmxilrcovzgh]

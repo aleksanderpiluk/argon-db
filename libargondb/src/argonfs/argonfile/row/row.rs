@@ -7,6 +7,7 @@ use crate::{
     kv::primary_key::KVPrimaryKeyUtils,
 };
 
+#[derive(Debug)]
 pub struct Row {
     pub primary_key: Box<[u8]>,
     pub mutations: Vec<InRowMutation>,

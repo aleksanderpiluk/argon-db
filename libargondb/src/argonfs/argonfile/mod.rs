@@ -19,5 +19,7 @@ pub use argonfile_data_block_iter::ArgonfileDataBlockIter;
 pub use argonfile_reader::ArgonfileReader;
 pub use argonfile_reader::ArgonfileReaderError;
 pub use block::BlockPointer;
+pub use stats::StatsParser;
+pub use summary::SummaryParser;
 
 pub use trailer::Trailer;

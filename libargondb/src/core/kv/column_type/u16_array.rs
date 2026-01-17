@@ -2,7 +2,7 @@ use std::io::Write;
 
 use crate::kv::{
     KVRuntimeError, KVRuntimeErrorKind,
-    column_type::{ColumnType, ColumnTypeDeserialize, ColumnTypeSerialize},
+    column_type::{ColumnType, ColumnTypeCode, ColumnTypeDeserialize, ColumnTypeSerialize},
 };
 
 pub struct ColumnTypeU16Array;
@@ -14,6 +14,10 @@ impl ColumnType for ColumnTypeU16Array {
 
     fn cmp(&self, this: &[u8], that: &[u8]) -> std::cmp::Ordering {
         todo!()
+    }
+
+    fn code(&self) -> ColumnTypeCode {
+        ColumnTypeCode::U16Array
     }
 }
 

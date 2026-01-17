@@ -11,6 +11,7 @@ use crate::{
     },
 };
 
+#[derive(Debug)]
 pub struct SummaryIndex {
     pub entries: Vec<SummaryIndexEntry>,
 }
@@ -37,7 +38,15 @@ impl SummaryIndex {
 
         let start = match from_find {
             Ok(idx) => idx,
-            Err(idx) => idx.min(self.entries.len() - 1),
+            Err(idx) => {
+                if idx >= self.entries.len() {
+                    self.entries.len() - 1
+                } else if idx == 0 {
+                    0
+                } else {
+                    idx - 1
+                }
+            }
         };
 
         let to_find = self.entries.binary_search_by(|entry| {

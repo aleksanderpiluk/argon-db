@@ -1,6 +1,6 @@
 use crate::kv::{
     KVRuntimeError, KVRuntimeErrorKind,
-    column_type::{ColumnType, ColumnTypeDeserialize, ColumnTypeSerialize},
+    column_type::{ColumnType, ColumnTypeCode, ColumnTypeDeserialize, ColumnTypeSerialize},
 };
 
 pub struct ColumnTypeText;
@@ -12,6 +12,10 @@ impl ColumnType for ColumnTypeText {
 
     fn cmp(&self, this: &[u8], that: &[u8]) -> std::cmp::Ordering {
         this.cmp(that)
+    }
+
+    fn code(&self) -> ColumnTypeCode {
+        ColumnTypeCode::Text
     }
 }
 

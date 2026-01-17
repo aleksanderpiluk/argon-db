@@ -2,7 +2,7 @@ use crate::{
     ensure,
     kv::{
         KVRuntimeError, KVRuntimeErrorKind,
-        column_type::{ColumnType, ColumnTypeDeserialize, ColumnTypeSerialize},
+        column_type::{ColumnType, ColumnTypeCode, ColumnTypeDeserialize, ColumnTypeSerialize},
     },
 };
 
@@ -15,6 +15,10 @@ impl ColumnType for ColumnTypeU16 {
 
     fn cmp(&self, this: &[u8], that: &[u8]) -> std::cmp::Ordering {
         this.cmp(that)
+    }
+
+    fn code(&self) -> ColumnTypeCode {
+        ColumnTypeCode::U16
     }
 }
 

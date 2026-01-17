@@ -7,6 +7,7 @@ use crate::argonfs::block_cache::page::PageState;
 use super::block_page_map::BlockPageMap;
 use super::page_buffer::BlockSharedGuard;
 
+#[derive(Debug)]
 pub struct BlockView {
     guard: BlockSharedGuard,
     page_map: BlockPageMap,

@@ -10,15 +10,15 @@ pub trait KVColumnValue {
 pub struct KVColumnValueBuilder;
 
 impl KVColumnValueBuilder {
-    pub fn text(value: String) -> Box<dyn KVColumnValue> {
+    pub fn text(value: String) -> Box<dyn KVColumnValue + Send + Sync + 'static> {
         Box::new(ColumnValueText(value))
     }
 
-    pub fn u16(value: u16) -> Box<dyn KVColumnValue> {
+    pub fn u16(value: u16) -> Box<dyn KVColumnValue + Send + Sync + 'static> {
         Box::new(ColumnValueU16(value))
     }
 
-    pub fn u16_array(value: Vec<u16>) -> Box<dyn KVColumnValue> {
+    pub fn u16_array(value: Vec<u16>) -> Box<dyn KVColumnValue + Send + Sync + 'static> {
         Box::new(ColumnValueU16Array(value))
     }
 }

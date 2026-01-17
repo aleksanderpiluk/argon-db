@@ -71,7 +71,7 @@ impl StatsBuilder {
         ))?;
 
         let stats = Stats {
-            bloom_filter: self.bloom.to_bytes().into_boxed_slice(),
+            bloom_filter: self.bloom,
             min_row_key,
             max_row_key,
         };

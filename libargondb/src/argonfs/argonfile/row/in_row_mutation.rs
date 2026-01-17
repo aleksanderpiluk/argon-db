@@ -6,6 +6,7 @@ use crate::{
     kv::mutation::{KVMutation, MutationType},
 };
 
+#[derive(Debug)]
 pub struct InRowMutation {
     pub timestamp: u64,
     pub column_id: u16,

@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     error::Error,
     fmt::Display,
     io::{self, Write},
@@ -18,8 +19,11 @@ use crate::{
         fs::BoxFileRef,
     },
     kv::{
-        KVRangeScan, KVRangeScanResult, KVRuntimeError, KVSSTableDataBlockIter, KVScanIterator,
-        KVScanIteratorItem, KVScannable, KVTableSchema, primary_key::KVPrimaryKeySchema,
+        KVColumnFilter, KVPrimaryKeyMarker, KVRangeScan, KVRangeScanResult, KVRuntimeError,
+        KVSSTableDataBlockIter, KVScanIterator, KVScanIteratorItem, KVScannable, KVTableSchema,
+        PrintIter,
+        mutation::MutationUtils,
+        primary_key::{KVPrimaryKeySchema, PrimaryKeyMarkerComparator},
     },
 };
 
@@ -91,6 +95,7 @@ impl KVScannable for ArgonfileSSTable {
         }
 
         let iter = RangeScanIterator::new(
+            self.schema.clone(),
             &pk_schema,
             self.block_cache.clone(),
             self.worker_pool.clone(),
@@ -99,11 +104,67 @@ impl KVScannable for ArgonfileSSTable {
         )
         .await;
 
-        Ok(KVRangeScanResult::Iter(Box::new(iter)))
+        Ok(KVRangeScanResult::Iter(Box::new(PrintIter::new(
+            format!("Argonfile id={}", self.argonfile.sstable_id),
+            iter,
+            self.schema.clone(),
+        ))))
+    }
+
+    async fn row_scan(&self, primary_key: &[u8]) -> Result<KVRangeScanResult, KVRuntimeError> {
+        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&self.schema);
+
+        let is_intersecting = self
+            .argonfile
+            .stats
+            .is_row_scan_intersecting(&pk_schema, primary_key);
+
+        if !is_intersecting {
+            return Ok(KVRangeScanResult::Empty);
+        }
+
+        let is_in_bloom_filter = self.argonfile.stats.is_row_in_bloom_filter(primary_key);
+        if !is_in_bloom_filter {
+            return Ok(KVRangeScanResult::Empty);
+        }
+
+        let range_scan = KVRangeScan::new(
+            self.schema.clone(),
+            KVPrimaryKeyMarker::Key(primary_key.to_vec().into_boxed_slice()),
+            KVPrimaryKeyMarker::Key(primary_key.to_vec().into_boxed_slice()),
+            KVColumnFilter::All,
+        );
+        let iter = RangeScanIterator::new(
+            self.schema.clone(),
+            &pk_schema,
+            self.block_cache.clone(),
+            self.worker_pool.clone(),
+            self.argonfile.clone(),
+            &range_scan,
+        )
+        .await;
+
+        Ok(KVRangeScanResult::Iter(Box::new(PrintIter::new(
+            format!("Argonfile id={}", self.argonfile.sstable_id),
+            iter,
+            self.schema.clone(),
+        ))))
+    }
+}
+
+impl std::fmt::Display for ArgonfileSSTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ArgonfileSSTable(sstable_id={})",
+            self.argonfile.sstable_id
+        )
     }
 }
 
 struct RangeScanIterator<B: Buf> {
+    table_schema: KVTableSchema,
+    schema: KVPrimaryKeySchema,
     block_cache: Arc<BlockCache>,
     block_ptrs: Vec<BlockPointer>,
     argonfile: Arc<Argonfile>,
@@ -111,10 +172,13 @@ struct RangeScanIterator<B: Buf> {
     current_block_iter: Option<ArgonfileDataBlockIter<B>>,
     current_entry: Option<Box<dyn KVScanIteratorItem + Send + Sync>>,
     worker_pool: Arc<ArgonFsWorkerPool>,
+    from: KVPrimaryKeyMarker,
+    to: KVPrimaryKeyMarker,
 }
 
 impl RangeScanIterator<Box<BlockView>> {
     async fn new(
+        table_schema: KVTableSchema,
         schema: &KVPrimaryKeySchema,
         block_cache: Arc<BlockCache>,
         worker_pool: Arc<ArgonFsWorkerPool>,
@@ -126,6 +190,8 @@ impl RangeScanIterator<Box<BlockView>> {
             .get_blocks_for_range_scan(schema, range_scan);
 
         let mut this = Self {
+            table_schema,
+            schema: schema.clone(),
             block_cache,
             block_ptrs,
             argonfile,
@@ -133,7 +199,15 @@ impl RangeScanIterator<Box<BlockView>> {
             current_block_iter: None,
             current_entry: None,
             worker_pool,
+            from: range_scan.from().clone(),
+            to: range_scan.to().clone(),
         };
+
+        #[cfg(debug_assertions)]
+        println!(
+            "argonfile id: {}, initializing iter, block ptrs: {:?}",
+            this.argonfile.sstable_id, this.block_ptrs
+        );
 
         // Load first entry on initialization
         this.load_next_iter().await;
@@ -162,11 +236,41 @@ impl RangeScanIterator<Box<BlockView>> {
     }
 
     async fn load_next_entry(&mut self) {
+        #[cfg(debug_assertions)]
+        println!(
+            "argonfile id: {}, current_block_iter: {:?}",
+            self.argonfile.sstable_id, self.current_block_iter
+        );
         loop {
             if let Some(iter) = &mut self.current_block_iter {
                 if let Some(entry) = iter.next() {
-                    self.current_entry = Some(entry);
-                    break;
+                    let lower_bound = PrimaryKeyMarkerComparator::cmp_with_key(
+                        &self.schema,
+                        &self.from,
+                        entry.primary_key(),
+                    )
+                    .unwrap()
+                        != Ordering::Greater;
+
+                    let upper_bound = PrimaryKeyMarkerComparator::cmp_with_key(
+                        &self.schema,
+                        &self.to,
+                        entry.primary_key(),
+                    )
+                    .unwrap()
+                        != Ordering::Less;
+
+                    #[cfg(debug_assertions)]
+                    println!(
+                        "argonfile id: {}, entry: {}",
+                        self.argonfile.sstable_id,
+                        MutationUtils::debug_fmt(&self.table_schema, entry.mutation()).unwrap()
+                    );
+
+                    if lower_bound && upper_bound {
+                        self.current_entry = Some(entry);
+                        break;
+                    }
                 } else {
                     self.load_next_iter().await;
                 }

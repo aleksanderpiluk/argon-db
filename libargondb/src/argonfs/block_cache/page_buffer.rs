@@ -168,6 +168,7 @@ unsafe impl Sync for BlockExclusiveGuard {}
 /**
  * Guards read access to the block(both header and data). When dropped, drops shared lock obtained on block.
  */
+#[derive(Debug)]
 pub struct BlockSharedGuard(NonNull<PageHeader>);
 
 impl BlockSharedGuard {

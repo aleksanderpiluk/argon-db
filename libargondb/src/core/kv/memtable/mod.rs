@@ -4,18 +4,16 @@ mod lock;
 
 pub use flush_request::KVMemtableFlushRequest;
 
-use crate::{
-    ensure,
-    kv::{
-        KVColumnFilter, KVRangeScanResult, KVRuntimeErrorKind, KVSSTableBuilder, KVScanIterator,
-        KVScanIteratorItem, KVTable,
-        error::KVRuntimeError,
-        memtable::{flush_pre_stats::KVFlushPreStats, lock::MemtableLock},
-        mutation::{KVMutation, MutationComparator, MutationUtils, StructuredMutation},
-        object_id::ObjectId,
-        primary_key::{KVPrimaryKeyMarker, KVPrimaryKeySchema},
-        scan::{KVRangeScan, KVScannable},
-    },
+use crate::kv::{
+    KVColumnFilter, KVRangeScanResult, KVRuntimeErrorKind, KVSSTableBuilder, KVScanIterator,
+    KVScanIteratorItem, KVTable,
+    error::KVRuntimeError,
+    iter::PrintIter,
+    memtable::{flush_pre_stats::KVFlushPreStats, lock::MemtableLock},
+    mutation::{KVMutation, MutationComparator, MutationUtils, StructuredMutation},
+    object_id::ObjectId,
+    primary_key::{KVPrimaryKeyMarker, KVPrimaryKeySchema},
+    scan::{KVRangeScan, KVScannable},
 };
 use async_trait::async_trait;
 use crossbeam_skiplist::{SkipSet, set::Entry};
@@ -96,6 +94,13 @@ impl Memtable {
                 });
 
                 self.lock.release_write_access();
+
+                #[cfg(debug_assertions)]
+                println!(
+                    "[Memtable id: {}] inserted mutation {}",
+                    self.object_id,
+                    MutationUtils::debug_fmt(&self.table.table_schema, mutation).unwrap()
+                );
                 return Ok(());
             }
         }
@@ -171,6 +176,7 @@ impl Memtable {
 
         let scan = self
             .range_scan(&KVRangeScan::new(
+                self.table.table_schema.clone(),
                 KVPrimaryKeyMarker::Start,
                 KVPrimaryKeyMarker::End,
                 KVColumnFilter::All,
@@ -210,13 +216,35 @@ impl Memtable {
     }
 }
 
+impl std::fmt::Display for Memtable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Memtable(object_id={})", self.object_id)
+    }
+}
+
 #[async_trait]
 impl KVScannable for Memtable {
     async fn range_scan(&self, scan: &KVRangeScan) -> Result<KVRangeScanResult, KVRuntimeError> {
         let iter = self.get_range_iterator(scan)?;
-        Ok(KVRangeScanResult::Iter(Box::new(
+        Ok(KVRangeScanResult::Iter(Box::new(PrintIter::new(
+            format!("Memtable id={}", self.object_id),
             MemtableScanResultsIter::new(iter),
-        )))
+            self.table.table_schema.clone(),
+        ))))
+    }
+
+    async fn row_scan(&self, primary_key: &[u8]) -> Result<KVRangeScanResult, KVRuntimeError> {
+        let iter = self.get_range_iterator(&KVRangeScan::new(
+            self.table.table_schema.clone(),
+            KVPrimaryKeyMarker::Key(primary_key.to_vec().into_boxed_slice()),
+            KVPrimaryKeyMarker::Key(primary_key.to_vec().into_boxed_slice()),
+            KVColumnFilter::All,
+        ))?;
+        Ok(KVRangeScanResult::Iter(Box::new(PrintIter::new(
+            format!("Memtable id={}", self.object_id),
+            MemtableScanResultsIter::new(iter),
+            self.table.table_schema.clone(),
+        ))))
     }
 }
 

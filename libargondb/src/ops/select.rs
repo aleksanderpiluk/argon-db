@@ -6,7 +6,8 @@ impl SelectOp {
     pub async fn execute(&self, table: &KVTable) {
         let from = KVPrimaryKeyMarker::Start;
         let to = KVPrimaryKeyMarker::End;
-        let scan_params = KVRangeScan::new(from, to, KVColumnFilter::All);
+        let scan_params =
+            KVRangeScan::new(table.table_schema.clone(), from, to, KVColumnFilter::All);
 
         let mut scan = table.scan(scan_params).await.unwrap();
 

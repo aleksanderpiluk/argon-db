@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::Path};
 
 use async_trait::async_trait;
 use crossbeam::queue::ArrayQueue;
@@ -20,6 +20,10 @@ impl FsFileSystem {
         Self {
             ctx: FsFileSystemCtx::new(config),
         }
+    }
+
+    pub fn get_file_handle(&self, path: &impl AsRef<Path>) -> BoxFileRef {
+        Box::new(FsFileRef::new(path.as_ref()))
     }
 }
 

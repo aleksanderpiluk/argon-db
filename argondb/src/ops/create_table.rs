@@ -30,7 +30,7 @@ pub struct CreateTableOp {
 }
 
 impl CreateTableOp {
-    pub fn execute(&self, db_ctx: &DbCtx) -> Result<Arc<KVTable>, CreateTableOpError> {
+    pub async fn execute(&self, db_ctx: &DbCtx) -> Result<Arc<KVTable>, CreateTableOpError> {
         let table_name = KVTableName::from_str(&self.table_name)
             .map_err(|_| CreateTableOpError::InvalidTableName)?;
 
@@ -103,6 +103,7 @@ impl CreateTableOp {
             ],
         }
         .execute(db_ctx)
+        .await
         .unwrap();
 
         for column in columns {
@@ -128,6 +129,7 @@ impl CreateTableOp {
                 ],
             }
             .execute(db_ctx)
+            .await
             .unwrap();
         }
 

@@ -17,10 +17,11 @@ use libargondb::{
     ConnectorError, ConnectorHandle, DbCtx,
     kv::{
         KVColumnFilter, KVColumnValue, KVColumnValueBuilder, KVPrimaryKeyMarker, KVRangeScan,
-        KVRow, KVTable, KVTableName, KVTableSchema,
+        KVRow, KVRowScan, KVTable, KVTableName, KVTableSchema,
         column_type::{
             ColumnTypeBytes, ColumnTypeCode, ColumnTypeText, ColumnTypeU16, ColumnTypeU16Array,
         },
+        primary_key::{KVPrimaryKeySchema, PrimaryKeyBuilder},
         schema::KVColumnSchema,
     },
 };
@@ -147,7 +148,7 @@ impl argondb_service_definition::argon_db_server::ArgonDb for ArgonDbHandlers {
             primary_key: req.primary_key.clone(),
         };
 
-        match op.execute(&self.db_ctx) {
+        match op.execute(&self.db_ctx).await {
             Ok(table) => Ok(tonic::Response::new(Table {
                 table_name: table.table_name.to_string(),
                 columns: table
@@ -210,13 +211,6 @@ impl argondb_service_definition::argon_db_server::ArgonDb for ArgonDbHandlers {
         let table_name = KVTableName::from_str(&req.table_name)
             .map_err(|_| Status::invalid_argument("invalid table name"))?;
 
-        let from: KVPrimaryKeyMarker = req
-            .from
-            .map(|_| todo!())
-            .unwrap_or(KVPrimaryKeyMarker::Start);
-
-        let to: KVPrimaryKeyMarker = req.from.map(|_| todo!()).unwrap_or(KVPrimaryKeyMarker::End);
-
         let table = self
             .db_ctx
             .catalog
@@ -226,6 +220,48 @@ impl argondb_service_definition::argon_db_server::ArgonDb for ArgonDbHandlers {
                 table_name
             )))?;
 
+        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&table.table_schema);
+
+        let from: KVPrimaryKeyMarker = req
+            .from
+            .clone()
+            .map(|PrimaryKeyMarker { values }| {
+                let mut pk_builder = PrimaryKeyBuilder::new(&pk_schema);
+
+                for column_id in &table.table_schema.primary_key {
+                    let column_schema = table.table_schema.lookup_by_column_id(*column_id).unwrap();
+
+                    let value = values.get(&column_schema.column_name).unwrap();
+
+                    let pk_col_val = GrpcHandlerUtils::value_to_column_value(value).unwrap();
+                    pk_builder.add_value(&pk_col_val.serialize().unwrap());
+                }
+                let primary_key = pk_builder.build();
+
+                KVPrimaryKeyMarker::Key(primary_key)
+            })
+            .unwrap_or(KVPrimaryKeyMarker::Start);
+
+        let to: KVPrimaryKeyMarker = req
+            .to
+            .clone()
+            .map(|PrimaryKeyMarker { values }| {
+                let mut pk_builder = PrimaryKeyBuilder::new(&pk_schema);
+
+                for column_id in &table.table_schema.primary_key {
+                    let column_schema = table.table_schema.lookup_by_column_id(*column_id).unwrap();
+
+                    let value = values.get(&column_schema.column_name).unwrap();
+
+                    let pk_col_val = GrpcHandlerUtils::value_to_column_value(value).unwrap();
+                    pk_builder.add_value(&pk_col_val.serialize().unwrap());
+                }
+                let primary_key = pk_builder.build();
+
+                KVPrimaryKeyMarker::Key(primary_key)
+            })
+            .unwrap_or(KVPrimaryKeyMarker::End);
+
         let map_scan_err = |e: libargondb::kv::KVRuntimeError| {
             println!("scan failed - {}", e);
 
@@ -233,7 +269,12 @@ impl argondb_service_definition::argon_db_server::ArgonDb for ArgonDbHandlers {
         };
 
         let mut scan = table
-            .scan(KVRangeScan::new(from, to, KVColumnFilter::All))
+            .scan(KVRangeScan::new(
+                table.table_schema.clone(),
+                from,
+                to,
+                KVColumnFilter::All,
+            ))
             .await
             .map_err(map_scan_err)?;
 
@@ -281,6 +322,7 @@ impl argondb_service_definition::argon_db_server::ArgonDb for ArgonDbHandlers {
             values,
         }
         .execute(&self.db_ctx)
+        .await
         .map_err(|e| {
             println!("insert failed - {:?}", e);
 
@@ -294,7 +336,59 @@ impl argondb_service_definition::argon_db_server::ArgonDb for ArgonDbHandlers {
         &self,
         request: Request<ReadRowRequest>,
     ) -> Result<Response<ReadRowResponse>, Status> {
-        todo!()
+        let req = request.get_ref();
+
+        let table_name = KVTableName::from_str(&req.table_name)
+            .map_err(|_| Status::invalid_argument("invalid table name"))?;
+
+        let table = self
+            .db_ctx
+            .catalog
+            .lookup_table_by_name(&table_name)
+            .ok_or(Status::not_found(format!(
+                "table {} does not exist",
+                table_name
+            )))?;
+
+        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&table.table_schema);
+
+        let values = req.primary_key_values.clone();
+        let mut pk_builder = PrimaryKeyBuilder::new(&pk_schema);
+
+        for column_id in &table.table_schema.primary_key {
+            let column_schema = table.table_schema.lookup_by_column_id(*column_id).unwrap();
+
+            let value = values.get(&column_schema.column_name).unwrap();
+
+            let pk_col_val = GrpcHandlerUtils::value_to_column_value(value).unwrap();
+            pk_builder.add_value(&pk_col_val.serialize().unwrap());
+        }
+        let primary_key = pk_builder.build();
+
+        let map_scan_err = |e: libargondb::kv::KVRuntimeError| {
+            println!("scan failed - {}", e);
+
+            Status::internal("scan failed")
+        };
+
+        let mut scan = table
+            .scan(KVRowScan::new(
+                table.table_schema.clone(),
+                primary_key,
+                KVColumnFilter::All,
+            ))
+            .await
+            .map_err(map_scan_err)?;
+
+        let maybe_row = scan.next_row().await.map_err(map_scan_err)?;
+
+        Ok(tonic::Response::new(ReadRowResponse {
+            values: if let Some(row) = maybe_row {
+                GrpcHandlerUtils::row_to_values_map(&table.table_schema, row)
+            } else {
+                HashMap::new()
+            },
+        }))
     }
 
     async fn mutate_row(&self, request: Request<MutateRowRequest>) -> Result<Response<()>, Status> {
@@ -361,13 +455,16 @@ impl GrpcHandlerUtils {
         }
     }
 
-    fn value_to_column_value(value: &Value) -> Result<Box<(dyn KVColumnValue + 'static)>, ()> {
+    fn value_to_column_value(
+        value: &Value,
+    ) -> Result<Box<(dyn KVColumnValue + Send + Sync + 'static)>, ()> {
         let Some(kind) = &value.kind else {
             return Err(());
         };
 
         match kind {
             Kind::StringValue(value) => Ok(KVColumnValueBuilder::text(value.clone())),
+            Kind::NumberValue(value) => Ok(KVColumnValueBuilder::u16(*value as u16)),
             _ => Err(()),
         }
     }

@@ -2,6 +2,7 @@ use std::ptr::NonNull;
 
 use crate::argonfs::block_cache::page::PageHeader;
 
+#[derive(Debug)]
 pub struct BlockPageMap {
     page_map: Box<[(usize, NonNull<u8>, usize)]>,
 }

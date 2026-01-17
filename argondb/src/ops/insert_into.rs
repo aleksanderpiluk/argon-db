@@ -1,5 +1,6 @@
 use std::{
     str::FromStr,
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -22,11 +23,11 @@ pub enum InsertOpError {
 
 pub struct InsertIntoOp {
     pub table_name: String,
-    pub values: Vec<(String, Box<dyn KVColumnValue>)>,
+    pub values: Vec<(String, Box<dyn KVColumnValue + Send + Sync + 'static>)>,
 }
 
 impl InsertIntoOp {
-    pub fn execute(&self, db_ctx: &DbCtx) -> Result<(), InsertOpError> {
+    pub async fn execute(&self, db_ctx: &DbCtx) -> Result<(), InsertOpError> {
         let table_name =
             KVTableName::from_str(&self.table_name).map_err(|_| InsertOpError::InvalidTableName)?;
 
@@ -37,7 +38,7 @@ impl InsertIntoOp {
 
         let (prepared_values, primary_key) = self.prepare(&table)?;
         let mutations = self.prepare_mutations(&prepared_values, &primary_key)?;
-        self.execute_insertions(&table, &mutations);
+        self.execute_insertions(&table, &mutations).await;
 
         Ok(())
     }
@@ -108,9 +109,9 @@ impl InsertIntoOp {
         Ok(mutations)
     }
 
-    fn execute_insertions(&self, table: &KVTable, mutations: &Vec<StructuredMutation>) {
+    async fn execute_insertions(&self, table: &Arc<KVTable>, mutations: &Vec<StructuredMutation>) {
         // TODO: Generally speaking, this code handling table state and getting new state after flush could be handled in a better way
-        table.insert_mutations(mutations);
+        table.insert_mutations(mutations).await.unwrap();
         // let mut table_state = table.load_state();
         // for mutation in mutations {
         //     loop {

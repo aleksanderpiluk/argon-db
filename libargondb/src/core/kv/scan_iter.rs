@@ -7,19 +7,23 @@ use async_trait::async_trait;
 
 use crate::kv::{
     KVRow, KVRuntimeError, KVScanIterator, KVScanIteratorItem, KVTableSchema,
-    mutation::MutationComparator, primary_key::KVPrimaryKeySchema, row::KVRowBuilder,
+    mutation::{MutationComparator, MutationUtils},
+    primary_key::KVPrimaryKeySchema,
+    row::KVRowBuilder,
 };
 
 type BoxKVScanIterator = Box<dyn KVScanIterator + Send + Sync>;
 
 pub struct KVMergeScanIter {
+    table_schema: KVTableSchema,
     schema: KVPrimaryKeySchema,
     heap: Vec<BoxKVScanIterator>,
 }
 
 impl KVMergeScanIter {
-    pub fn new(schema: KVPrimaryKeySchema) -> Self {
+    pub fn new(table_schema: KVTableSchema, schema: KVPrimaryKeySchema) -> Self {
         Self {
+            table_schema,
             schema,
             heap: vec![],
         }
@@ -40,6 +44,20 @@ impl KVMergeScanIter {
                     MutationComparator::cmp(&self.schema, a.mutation(), b.mutation()).unwrap()
                 }
             });
+
+        let mut out = String::from("");
+        for iter in &self.heap {
+            out += &format!(
+                "{}, ",
+                match &iter.peek_mutation() {
+                    Some(mutation) =>
+                        MutationUtils::debug_fmt(&self.table_schema, mutation.mutation()).unwrap(),
+                    None => "None".to_string(),
+                }
+            );
+        }
+        #[cfg(debug_assertions)]
+        println!("Heapified: {}", out);
     }
 }
 

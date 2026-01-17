@@ -10,6 +10,7 @@ use crate::{
     },
 };
 
+#[derive(Debug)]
 pub struct ArgonfileDataBlockIter<B: Buf> {
     buf: B,
     row: Option<Row>,

@@ -15,7 +15,7 @@ message ScanTableRequest {
 }
 
 message PrimaryKeyMarker {
-  // Empty for now
+  map<string, google.protobuf.Value> values = 2;
 }
 
 message ScanTableResponseRow {

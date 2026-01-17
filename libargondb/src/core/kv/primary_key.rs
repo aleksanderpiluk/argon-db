@@ -2,7 +2,7 @@ use crate::{
     ensure,
     kv::{
         KVRuntimeErrorKind,
-        column_type::{ColumnType, ColumnTypeCode},
+        column_type::{ColumnType, ColumnTypeCode, KVColumnTypeUtils},
         error::{KVConstructorError, KVRuntimeError},
         schema::KVTableSchema,
     },
@@ -10,9 +10,7 @@ use crate::{
 use bytemuck::{bytes_of, from_bytes};
 use std::cmp::Ordering;
 
-/**
- * Stores schema of primary key
- */
+/// Stores schema of primary key  
 #[derive(Debug, Clone)]
 pub struct KVPrimaryKeySchema(Box<[u8]>);
 
@@ -22,7 +20,7 @@ impl KVPrimaryKeySchema {
         assert!(column_count > 0);
         assert!(column_count <= u8::MAX as usize);
 
-        let mut buffer = Vec::<u8>::with_capacity(2 + column_count);
+        let mut buffer = Vec::<u8>::with_capacity(1 + column_count);
         buffer.push(column_count as u8);
 
         for column_id in &columns_schema.primary_key {
@@ -34,18 +32,6 @@ impl KVPrimaryKeySchema {
         }
 
         Self(buffer.into_boxed_slice())
-    }
-
-    fn construct(data: Box<[u8]>) -> Result<Self, KVConstructorError> {
-        ensure!(data.len() > 0, KVConstructorError::InvalidData);
-
-        let column_count = data[0] as usize;
-        ensure!(
-            data.len() == (1 + column_count),
-            KVConstructorError::InvalidData
-        );
-
-        Ok(Self(data))
     }
 
     fn column_count(&self) -> u8 {
@@ -61,7 +47,7 @@ impl KVPrimaryKeySchema {
             )
         );
 
-        let code = self.0[idx];
+        let code = self.0[1 + idx];
         ColumnTypeCode::type_for_code(code)
     }
 }
@@ -208,6 +194,7 @@ impl<'a> PrimaryKeyBuilder<'a> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum KVPrimaryKeyMarker {
     Start,
     End,
@@ -250,6 +237,18 @@ impl PrimaryKeyMarkerComparator {
 
         panic!("PrimaryKeyMarkerComparator fatal error");
     }
+
+    pub fn cmp_with_key(
+        schema: &KVPrimaryKeySchema,
+        this: &KVPrimaryKeyMarker,
+        that: &[u8],
+    ) -> Result<Ordering, KVRuntimeError> {
+        match this {
+            KVPrimaryKeyMarker::Start => Ok(Ordering::Less),
+            KVPrimaryKeyMarker::End => Ok(Ordering::Greater),
+            KVPrimaryKeyMarker::Key(this) => KVPrimaryKeyComparator::cmp(schema, this, that),
+        }
+    }
 }
 
 pub struct KVPrimaryKeyUtils;
@@ -260,5 +259,50 @@ impl KVPrimaryKeyUtils {
         assert!(pk_size <= u16::MAX as usize);
 
         pk_size as u16
+    }
+
+    pub fn debug_fmt(schema: &KVTableSchema, key: &[u8]) -> Result<String, ()> {
+        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&schema);
+        let mut pk_view = PrimaryKeyView::construct(&pk_schema, key).map_err(|_| ())?;
+
+        let mut out = String::from("|");
+
+        while let Some((column_type, column_value)) = pk_view.next_column().map_err(|_| ())? {
+            out += &format!(
+                "{}|",
+                KVColumnTypeUtils::debug_fmt(column_type.code(), column_value)
+            );
+        }
+
+        Ok(out)
+    }
+}
+
+pub struct KVPrimaryKeyMarkerUtils;
+
+impl KVPrimaryKeyMarkerUtils {
+    pub fn debug_fmt(schema: &KVTableSchema, key: &KVPrimaryKeyMarker) -> Result<String, ()> {
+        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&schema);
+
+        match key {
+            KVPrimaryKeyMarker::Start => Ok("Start".to_string()),
+            KVPrimaryKeyMarker::End => Ok("End".to_string()),
+            KVPrimaryKeyMarker::Key(key) => {
+                let mut pk_view = PrimaryKeyView::construct(&pk_schema, key).map_err(|_| ())?;
+
+                let mut out = String::from("|");
+
+                while let Some((column_type, column_value)) =
+                    pk_view.next_column().map_err(|_| ())?
+                {
+                    out += &format!(
+                        "{}|",
+                        KVColumnTypeUtils::debug_fmt(column_type.code(), column_value)
+                    );
+                }
+
+                Ok(out)
+            }
+        }
     }
 }

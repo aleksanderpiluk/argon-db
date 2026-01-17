@@ -1,21 +1,21 @@
 use std::{
     fmt::Debug,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 /**
  * Memtable lock provides access control for writers, readers and flushers.
  * When memtable is moved into read-only state and all writes are finished, memtable is flush-ready.
  */
-pub struct MemtableLock(AtomicUsize);
+pub struct MemtableLock(AtomicU64);
 
 impl MemtableLock {
-    const INITIAL_STATE: usize = 0;
+    const INITIAL_STATE: u64 = 0;
 
-    const FLAG_READ_ONLY: usize = 1 << 63;
+    const FLAG_READ_ONLY: u64 = 1 << 63;
 
     pub fn new() -> Self {
-        Self(AtomicUsize::new(Self::INITIAL_STATE))
+        Self(AtomicU64::new(Self::INITIAL_STATE))
     }
 
     pub fn obtain_write_access(&self) -> Result<(), ()> {
@@ -44,7 +44,7 @@ impl MemtableLock {
     }
 
     pub fn enable_read_only_mode(&self) {
-        self.0.fetch_xor(Self::FLAG_READ_ONLY, Ordering::AcqRel);
+        self.0.fetch_or(Self::FLAG_READ_ONLY, Ordering::AcqRel);
     }
 
     pub fn is_flush_ready(&self) -> bool {

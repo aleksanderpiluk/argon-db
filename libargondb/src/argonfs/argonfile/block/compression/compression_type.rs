@@ -26,6 +26,14 @@ impl TryFrom<u8> for CompressionType {
     }
 }
 
+impl std::fmt::Display for CompressionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Uncompressed => write!(f, "Uncompressed"),
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 #[error("invalid serialized compression type {0}")]
 pub struct CompressionTypeParseError(u8);

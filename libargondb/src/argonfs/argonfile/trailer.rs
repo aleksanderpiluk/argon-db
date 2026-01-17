@@ -9,6 +9,7 @@ use crate::kv::ObjectId;
 
 pub const ARGONFILE_MAGIC: &'static [u8; 8] = b"ARGNFILE";
 
+#[derive(Debug)]
 pub struct Trailer {
     pub sstable_id: ObjectId,
     pub summary_block_ptr: BlockPointer,

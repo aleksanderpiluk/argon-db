@@ -136,6 +136,7 @@ async fn scan_user_tables(
 
     let mut scan = argonsys_tables
         .scan(KVRangeScan::new(
+            argonsys_tables.table_schema.clone(),
             KVPrimaryKeyMarker::Start,
             KVPrimaryKeyMarker::End,
             KVColumnFilter::All,
@@ -178,6 +179,7 @@ async fn scan_user_table_columns(
     // TODO: Should be replaced with more advanced query
     let mut scan = argonsys_columns
         .scan(KVRangeScan::new(
+            argonsys_columns.table_schema.clone(),
             KVPrimaryKeyMarker::Start,
             KVPrimaryKeyMarker::End,
             KVColumnFilter::All,

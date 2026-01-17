@@ -1,5 +1,10 @@
+use bloomfilter::Bloom;
+
 use super::super::parse_utils::ensure_min_size;
-use crate::argonfs::argonfile::{error::ArgonfileParseResult, stats::Stats};
+use crate::{
+    argonfile::error::ArgonfileParseError,
+    argonfs::argonfile::{error::ArgonfileParseResult, stats::Stats},
+};
 
 pub struct StatsParser;
 
@@ -22,6 +27,9 @@ impl StatsParser {
         let buf = &buf[max_row_key_size..];
         ensure_min_size(buf.len(), bloom_filter_size)?;
         let bloom_filter = Box::<[u8]>::from(&buf[0..bloom_filter_size]);
+
+        let bloom_filter =
+            Bloom::<[u8]>::from_bytes(bloom_filter.to_vec()).map_err(|_| ArgonfileParseError)?;
 
         Ok(Stats {
             bloom_filter,

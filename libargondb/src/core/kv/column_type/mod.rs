@@ -15,6 +15,7 @@ use crate::kv::{KVRuntimeError, KVRuntimeErrorKind};
 pub trait ColumnType {
     fn eq(&self, this: &[u8], that: &[u8]) -> bool;
     fn cmp(&self, this: &[u8], that: &[u8]) -> Ordering;
+    fn code(&self) -> ColumnTypeCode;
 }
 
 pub trait ColumnTypeDeserialize {
@@ -74,6 +75,23 @@ impl ColumnTypeCode {
                     code
                 ),
             )),
+        }
+    }
+}
+
+pub struct KVColumnTypeUtils;
+
+impl KVColumnTypeUtils {
+    pub fn debug_fmt(column_type: ColumnTypeCode, value: &[u8]) -> String {
+        match column_type {
+            ColumnTypeCode::Bytes => {
+                format!("{:?}", value)
+            }
+            ColumnTypeCode::Text => format!("{}", &ColumnTypeText::deserialize(value).unwrap(),),
+            ColumnTypeCode::U16 => format!("{}", &ColumnTypeU16::deserialize(value).unwrap(),),
+            ColumnTypeCode::U16Array => {
+                format!("{:?}", &ColumnTypeU16Array::deserialize(value).unwrap(),)
+            }
         }
     }
 }
