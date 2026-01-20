@@ -1,5 +1,5 @@
 use std::{
-    io,
+    fs, io,
     path::{Path, PathBuf},
 };
 
@@ -31,6 +31,10 @@ impl FileRef for FsFileRef {
 
     async fn open_write_only(&self) -> Result<Box<dyn WriteOnlyFileHandle>, io::Error> {
         Ok(Box::new(FsWriteOnlyFileHandle::new(&self.path)?))
+    }
+
+    async fn remove(self: Box<Self>) -> Result<(), io::Error> {
+        fs::remove_file(self.path)
     }
 
     fn box_clone(&self) -> BoxFileRef {

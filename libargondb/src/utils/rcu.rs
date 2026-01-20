@@ -32,7 +32,7 @@ impl<T> RCU<T> {
         }
     }
 
-    pub fn mutate_blocking<F>(&self, mutate_fn: F)
+    pub fn mutate_blocking<F>(&self, mutate_fn: F) -> bool
     where
         F: FnOnce(&T) -> Option<T>,
     {
@@ -41,6 +41,9 @@ impl<T> RCU<T> {
         let current = self.state.load();
         if let Some(next) = mutate_fn(&current) {
             self.state.store(Arc::new(next));
+            true
+        } else {
+            false
         }
     }
 }

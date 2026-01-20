@@ -9,6 +9,8 @@ pub trait FileRef: Send + Sync {
 
     async fn open_write_only(&self) -> Result<Box<dyn WriteOnlyFileHandle>, io::Error>;
 
+    async fn remove(self: Box<Self>) -> Result<(), io::Error>;
+
     fn box_clone(&self) -> BoxFileRef;
 }
 

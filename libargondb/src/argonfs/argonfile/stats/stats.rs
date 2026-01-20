@@ -14,13 +14,14 @@ use crate::{
 };
 
 pub struct Stats {
+    pub mutation_count: u64,
     pub bloom_filter: Bloom<[u8]>,
     pub min_row_key: Box<[u8]>,
     pub max_row_key: Box<[u8]>,
 }
 
 impl Stats {
-    pub const MIN_SIZE_SERIALIZED: usize = 12;
+    pub const MIN_SIZE_SERIALIZED: usize = 20;
 
     pub fn is_range_scan_intersecting(
         &self,
@@ -79,6 +80,7 @@ impl Stats {
         assert!(min_row_key_size < u16::MAX as usize);
         assert!(max_row_key_size < u16::MAX as usize);
         assert!(bloom_filter_size < u64::MAX as usize);
+        writer.write(&u64::to_le_bytes(stats.mutation_count))?;
         writer.write(&u16::to_le_bytes(min_row_key_size as u16))?;
         writer.write(&u16::to_le_bytes(max_row_key_size as u16))?;
         writer.write(&u64::to_le_bytes(bloom_filter_size as u64))?;

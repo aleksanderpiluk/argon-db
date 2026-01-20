@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-libargonrt = { path = "../libargonrt" }
 bitflags = "2.9.4"
 crossbeam = { version = "0.8.4", features = ["crossbeam-channel"] }
 crossbeam-skiplist = "0.1.3"

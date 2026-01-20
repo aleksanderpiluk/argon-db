@@ -51,27 +51,5 @@
                 ]
             }
         },
-        {
-            "name": "Debug unit tests in library 'libargonrt'",
-            "type": "lldb",
-            "request": "launch",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--package=libargonrt"
-                ]
-            }
-        },
-        {
-            "name": "Debug unit tests in library 'libargonfile'",
-            "type": "lldb",
-            "request": "launch",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--package=libargonfile"
-                ]
-            }
-        }
     ]
 }

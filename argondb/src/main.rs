@@ -8,7 +8,7 @@ mod signals_handler;
 mod supervisor;
 mod system_tables;
 
-use libargondb::ArgonFsMemtableFlusher;
+use libargondb::{ArgonFsMemtableFlusher, SSTableCompactor};
 
 use crate::{
     connectors::grpc::init_connector_grpc,
@@ -25,6 +25,8 @@ fn main() {
 
     let memtable_flusher_handle = ArgonFsMemtableFlusher::new(db_ctx.clone());
 
+    let sstable_compactor_handle = SSTableCompactor::new(db_ctx.clone());
+
     let connector_handle = init_connector_grpc(db_ctx.clone())
         .ok_or_critical_err()
         .ok_or_abort();
@@ -32,6 +34,7 @@ fn main() {
     let system_ctx = SystemCtx {
         db_ctx: db_ctx.clone(),
         memtable_flusher_handle,
+        sstable_compactor_handle,
         connector_handles: vec![connector_handle],
     };
 

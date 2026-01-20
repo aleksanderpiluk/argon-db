@@ -12,11 +12,12 @@ impl StatsParser {
     pub fn parse(buf: &[u8]) -> ArgonfileParseResult<Stats> {
         ensure_min_size(buf.len(), Stats::MIN_SIZE_SERIALIZED)?;
 
-        let min_row_key_size = u16::from_le_bytes(buf[0..2].try_into().unwrap()) as usize;
-        let max_row_key_size = u16::from_le_bytes(buf[2..4].try_into().unwrap()) as usize;
-        let bloom_filter_size = u64::from_le_bytes(buf[4..12].try_into().unwrap()) as usize;
+        let mutation_count = u64::from_le_bytes(buf[0..8].try_into().unwrap());
+        let min_row_key_size = u16::from_le_bytes(buf[8..10].try_into().unwrap()) as usize;
+        let max_row_key_size = u16::from_le_bytes(buf[10..12].try_into().unwrap()) as usize;
+        let bloom_filter_size = u64::from_le_bytes(buf[12..20].try_into().unwrap()) as usize;
 
-        let buf = &buf[12..];
+        let buf = &buf[20..];
         ensure_min_size(buf.len(), min_row_key_size)?;
         let min_row_key = Box::<[u8]>::from(&buf[0..min_row_key_size]);
 
@@ -32,6 +33,7 @@ impl StatsParser {
             Bloom::<[u8]>::from_bytes(bloom_filter.to_vec()).map_err(|_| ArgonfileParseError)?;
 
         Ok(Stats {
+            mutation_count,
             bloom_filter,
             min_row_key,
             max_row_key,

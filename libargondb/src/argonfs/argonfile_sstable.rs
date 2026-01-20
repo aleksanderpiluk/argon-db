@@ -20,8 +20,8 @@ use crate::{
     },
     kv::{
         KVColumnFilter, KVPrimaryKeyMarker, KVRangeScan, KVRangeScanResult, KVRuntimeError,
-        KVSSTableDataBlockIter, KVScanIterator, KVScanIteratorItem, KVScannable, KVTableSchema,
-        PrintIter,
+        KVSSTable, KVSSTableDataBlockIter, KVScanIterator, KVScanIteratorItem, KVScannable,
+        KVTableSchema, ObjectId, PrintIter,
         mutation::MutationUtils,
         primary_key::{KVPrimaryKeySchema, PrimaryKeyMarkerComparator},
     },
@@ -149,6 +149,18 @@ impl KVScannable for ArgonfileSSTable {
             iter,
             self.schema.clone(),
         ))))
+    }
+}
+
+impl KVSSTable for ArgonfileSSTable {
+    fn level(&self) -> u64 {
+        self.argonfile.level
+    }
+    fn sstable_id(&self) -> ObjectId {
+        self.argonfile.sstable_id
+    }
+    fn mutation_count(&self) -> u64 {
+        self.argonfile.stats.mutation_count
     }
 }
 

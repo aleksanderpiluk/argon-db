@@ -14,11 +14,11 @@ use crate::{
         stats::Stats,
         utils::{ArgonfileOffsetCountingWriteWrapper, ArgonfileWrite},
     },
-    kv::{memtable::Memtable, mutation::KVMutation},
+    kv::{KVFlushPreStats, mutation::KVMutation},
 };
 
 pub struct StatsBuilder {
-    memtable: Arc<Memtable>,
+    mutation_count: u64,
     bloom: Bloom<[u8]>,
     min_key: Option<Box<[u8]>>,
     max_key: Option<Box<[u8]>>,
@@ -27,19 +27,16 @@ pub struct StatsBuilder {
 impl StatsBuilder {
     const BLOOM_FILTER_FP_CHANCE: f64 = 0.05;
 
-    pub fn new(memtable: Arc<Memtable>) -> Result<Self, ArgonfileBuilderError> {
-        let pre_stats = memtable
-            .get_flush_prestats()
-            .map_err(|e| ArgonfileBuilderError::from_source(e))?;
-        let mutations_count = pre_stats.mutations_count;
+    pub fn new(pre_stats: KVFlushPreStats) -> Result<Self, ArgonfileBuilderError> {
+        let mutation_count = pre_stats.mutations_count;
 
         let bloom =
-            Bloom::new_for_fp_rate(mutations_count, Self::BLOOM_FILTER_FP_CHANCE).map_err(|e| {
+            Bloom::new_for_fp_rate(mutation_count, Self::BLOOM_FILTER_FP_CHANCE).map_err(|e| {
                 ArgonfileBuilderError::from_msg(format!("Bloom construction error: {}", e))
             })?;
 
         Ok(Self {
-            memtable,
+            mutation_count: mutation_count as u64,
             bloom,
             min_key: None,
             max_key: None,
@@ -71,6 +68,7 @@ impl StatsBuilder {
         ))?;
 
         let stats = Stats {
+            mutation_count: self.mutation_count,
             bloom_filter: self.bloom,
             min_row_key,
             max_row_key,

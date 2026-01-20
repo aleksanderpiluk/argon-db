@@ -14,6 +14,7 @@ use super::{stats::Stats, summary::SummaryIndex};
 pub struct Argonfile {
     pub file_ref: BoxFileRef,
     pub sstable_id: ObjectId,
+    pub level: u64,
     pub summary_index: SummaryIndex,
     pub stats: Stats,
 }
@@ -26,6 +27,7 @@ impl Argonfile {
         let trailer = reader.read_trailer().await?;
 
         let sstable_id = trailer.sstable_id;
+        let level = trailer.level;
 
         let summary_block = reader.read_block(&trailer.summary_block_ptr).await?;
         let summary_index = SummaryParser::parse(&summary_block.data)?;
@@ -36,6 +38,7 @@ impl Argonfile {
         Ok(Self {
             file_ref,
             sstable_id,
+            level,
             stats,
             summary_index,
         })

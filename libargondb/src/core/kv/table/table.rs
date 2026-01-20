@@ -1,7 +1,7 @@
 use super::{KVTableId, KVTableName, KVTableState};
 use crate::{
     kv::{
-        KVRangeScanResult, KVRuntimeError, KVRuntimeErrorKind, KVScannable,
+        KVRangeScanResult, KVRuntimeError, KVRuntimeErrorKind, KVSSTable, KVScannable,
         instance::KVInstance,
         iter::{PrintIter, ShadowingIter},
         memtable::{Memtable, MemtableInsertError},
@@ -31,7 +31,7 @@ impl KVTable {
         table_id: KVTableId<'static>,
         table_name: KVTableName<'static>,
         table_schema: KVTableSchema,
-        sstables: Vec<Box<dyn KVScannable>>,
+        sstables: Vec<Box<dyn KVSSTable>>,
     ) -> Self {
         let sstables = sstables
             .into_iter()
@@ -183,7 +183,7 @@ impl KVTable {
     pub fn replace_flushed_memtable_with_sstable(
         &self,
         memtable: Arc<Memtable>,
-        sstable: Arc<Box<dyn KVScannable>>,
+        sstable: Arc<Box<dyn KVSSTable>>,
     ) {
         self.state.mutate_blocking(|state| {
             match state.replace_flushed_memtable_with_sstable(memtable, sstable) {
@@ -194,5 +194,29 @@ impl KVTable {
                 Ok(next_state) => Some(next_state),
             }
         });
+    }
+
+    pub fn list_sstables(&self) -> Vec<Arc<Box<dyn KVSSTable>>> {
+        let state = self.state.load();
+
+        state.list_sstables()
+    }
+
+    pub fn replace_compacted_sstables(
+        &self,
+        compacted_sstables: &Vec<Arc<Box<dyn KVSSTable>>>,
+        new_sstable: Arc<Box<dyn KVSSTable>>,
+    ) -> Result<(), ()> {
+        let state_replaced = self.state.mutate_blocking(|state| {
+            match state.replace_compacted_sstables(compacted_sstables, new_sstable) {
+                Err(e) => {
+                    println!("Failed to replace flushed memtable with sstable: {:?}", e);
+                    None
+                }
+                Ok(next_state) => Some(next_state),
+            }
+        });
+
+        if state_replaced { Ok(()) } else { Err(()) }
     }
 }

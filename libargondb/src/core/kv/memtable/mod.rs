@@ -2,6 +2,7 @@ mod flush_pre_stats;
 mod flush_request;
 mod lock;
 
+pub use flush_pre_stats::KVFlushPreStats;
 pub use flush_request::KVMemtableFlushRequest;
 
 use crate::kv::{
@@ -9,7 +10,7 @@ use crate::kv::{
     KVScanIteratorItem, KVTable,
     error::KVRuntimeError,
     iter::PrintIter,
-    memtable::{flush_pre_stats::KVFlushPreStats, lock::MemtableLock},
+    memtable::lock::MemtableLock,
     mutation::{KVMutation, MutationComparator, MutationUtils, StructuredMutation},
     object_id::ObjectId,
     primary_key::{KVPrimaryKeyMarker, KVPrimaryKeySchema},

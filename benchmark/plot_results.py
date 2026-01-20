@@ -37,7 +37,7 @@ def plot(csv_path, title, out_name):
     # Combined legend
     lines = [line1, line2]
     labels = [l.get_label() for l in lines]
-    ax1.legend(lines, labels, loc="best")
+    ax1.legend(lines, labels, loc="lower right",)
 
     plt.title(title)
     plt.tight_layout()

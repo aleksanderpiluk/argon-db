@@ -19,6 +19,8 @@ pub use argonfs::ArgonFsMemtableFlusherHandle;
 pub use argonfs::ArgonfileReader;
 pub use argonfs::FsFileSystem;
 pub use argonfs::FsFileSystemConfig;
+pub use argonfs::SSTableCompactor;
+pub use argonfs::SSTableCompactorHandle;
 pub use argonfs::argonfile;
 pub use catalog::Catalog;
 pub use connector::ConnectorError;

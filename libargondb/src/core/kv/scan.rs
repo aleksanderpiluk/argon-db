@@ -1,16 +1,10 @@
-use std::vec;
-
 use async_trait::async_trait;
 
 use crate::kv::{
     KVTableSchema,
     error::KVRuntimeError,
-    mutation::{KVMutation, MutationComparator},
-    primary_key::{
-        KVPrimaryKeyMarker, KVPrimaryKeyMarkerUtils, KVPrimaryKeySchema, KVPrimaryKeyUtils,
-    },
-    scan_iter::KVMergeScanIter,
-    table::KVTableState,
+    mutation::KVMutation,
+    primary_key::{KVPrimaryKeyMarker, KVPrimaryKeyMarkerUtils, KVPrimaryKeyUtils},
 };
 
 #[async_trait]

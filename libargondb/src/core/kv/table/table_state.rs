@@ -1,6 +1,8 @@
 use std::{fmt::Debug, mem::replace, sync::Arc};
 
-use crate::kv::{KVRuntimeError, KVRuntimeErrorKind, memtable::Memtable, scan::KVScannable};
+use crate::kv::{
+    KVRuntimeError, KVRuntimeErrorKind, KVSSTable, memtable::Memtable, scan::KVScannable,
+};
 
 #[derive(Clone)]
 pub enum KVTableState {
@@ -15,7 +17,7 @@ impl Debug for KVTableState {
 }
 
 impl KVTableState {
-    pub fn new_closed(sstables: Vec<Arc<Box<dyn KVScannable>>>) -> Self {
+    pub fn new_closed(sstables: Vec<Arc<Box<dyn KVSSTable>>>) -> Self {
         Self::Closed(KVTableStateClosed {
             read_memtables: vec![],
             sstables,
@@ -66,11 +68,33 @@ impl KVTableState {
     pub fn replace_flushed_memtable_with_sstable(
         &self,
         memtable: Arc<Memtable>,
-        sstable: Arc<Box<dyn KVScannable>>,
+        sstable: Arc<Box<dyn KVSSTable>>,
     ) -> Result<KVTableState, KVRuntimeError> {
         match self {
             Self::Active(state) => state.replace_flushed_memtable_with_sstable(memtable, sstable),
             Self::Closed(state) => state.replace_flushed_memtable_with_sstable(memtable, sstable),
+        }
+    }
+
+    pub fn list_sstables(&self) -> Vec<Arc<Box<dyn KVSSTable>>> {
+        match self {
+            Self::Active(state) => state.sstables.clone(),
+            Self::Closed(state) => state.sstables.clone(),
+        }
+    }
+
+    pub fn replace_compacted_sstables(
+        &self,
+        compacted_sstables: &Vec<Arc<Box<dyn KVSSTable>>>,
+        new_sstable: Arc<Box<dyn KVSSTable>>,
+    ) -> Result<KVTableState, KVRuntimeError> {
+        match self {
+            Self::Active(state) => {
+                state.replace_compacted_sstables(compacted_sstables, new_sstable)
+            }
+            Self::Closed(state) => {
+                state.replace_compacted_sstables(compacted_sstables, new_sstable)
+            }
         }
     }
 }
@@ -79,7 +103,7 @@ impl KVTableState {
 pub struct KVTableStateActive {
     pub current_memtable: Arc<Memtable>,
     pub read_memtables: Vec<Arc<Memtable>>,
-    pub sstables: Vec<Arc<Box<dyn KVScannable>>>,
+    pub sstables: Vec<Arc<Box<dyn KVSSTable>>>,
 }
 
 impl KVTableStateActive {
@@ -111,7 +135,7 @@ impl KVTableStateActive {
     pub fn replace_flushed_memtable_with_sstable(
         &self,
         memtable: Arc<Memtable>,
-        sstable: Arc<Box<dyn KVScannable>>,
+        sstable: Arc<Box<dyn KVSSTable>>,
     ) -> Result<KVTableState, KVRuntimeError> {
         let mut next_state = self.clone();
 
@@ -129,12 +153,37 @@ impl KVTableStateActive {
 
         Ok(KVTableState::Active(next_state))
     }
+
+    pub fn replace_compacted_sstables(
+        &self,
+        compacted_sstables: &Vec<Arc<Box<dyn KVSSTable>>>,
+        new_sstable: Arc<Box<dyn KVSSTable>>,
+    ) -> Result<KVTableState, KVRuntimeError> {
+        let mut next_state = self.clone();
+
+        for compacted_sstable in compacted_sstables {
+            let idx = next_state
+                .sstables
+                .iter()
+                .position(|this| Arc::ptr_eq(this, &compacted_sstable))
+                .ok_or(KVRuntimeError::with_msg(
+                    KVRuntimeErrorKind::OperationNotAllowed,
+                    "sstable not found in this table state",
+                ))?;
+
+            next_state.sstables.remove(idx);
+        }
+
+        next_state.sstables.push(new_sstable);
+
+        Ok(KVTableState::Active(next_state))
+    }
 }
 
 #[derive(Clone)]
 pub struct KVTableStateClosed {
     pub read_memtables: Vec<Arc<Memtable>>,
-    pub sstables: Vec<Arc<Box<dyn KVScannable>>>,
+    pub sstables: Vec<Arc<Box<dyn KVSSTable>>>,
 }
 
 impl KVTableStateClosed {
@@ -149,7 +198,7 @@ impl KVTableStateClosed {
     pub fn replace_flushed_memtable_with_sstable(
         &self,
         memtable: Arc<Memtable>,
-        sstable: Arc<Box<dyn KVScannable>>,
+        sstable: Arc<Box<dyn KVSSTable>>,
     ) -> Result<KVTableState, KVRuntimeError> {
         let mut next_state = self.clone();
 
@@ -164,6 +213,31 @@ impl KVTableStateClosed {
         next_state.read_memtables.remove(memtable_idx);
 
         next_state.sstables.push(sstable);
+
+        Ok(KVTableState::Closed(next_state))
+    }
+
+    pub fn replace_compacted_sstables(
+        &self,
+        compacted_sstables: &Vec<Arc<Box<dyn KVSSTable>>>,
+        new_sstable: Arc<Box<dyn KVSSTable>>,
+    ) -> Result<KVTableState, KVRuntimeError> {
+        let mut next_state = self.clone();
+
+        for compacted_sstable in compacted_sstables {
+            let idx = next_state
+                .sstables
+                .iter()
+                .position(|this| Arc::ptr_eq(this, &compacted_sstable))
+                .ok_or(KVRuntimeError::with_msg(
+                    KVRuntimeErrorKind::OperationNotAllowed,
+                    "sstable not found in this table state",
+                ))?;
+
+            next_state.sstables.remove(idx);
+        }
+
+        next_state.sstables.push(new_sstable);
 
         Ok(KVTableState::Closed(next_state))
     }

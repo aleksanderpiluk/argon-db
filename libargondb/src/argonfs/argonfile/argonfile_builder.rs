@@ -17,8 +17,8 @@ use crate::{
         summary::SummaryBuilder,
     },
     kv::{
-        KVRuntimeError, KVRuntimeErrorKind, KVSSTableBuilder, KVScannable, memtable::Memtable,
-        mutation::KVMutation,
+        KVFlushPreStats, KVRuntimeError, KVRuntimeErrorKind, KVSSTableBuilder, KVScanIterator,
+        KVScannable, ObjectId, memtable::Memtable, mutation::KVMutation,
     },
 };
 
@@ -31,7 +31,10 @@ impl ArgonfileBuilder {
     ) -> Result<(), ArgonfileBuilderError> {
         let config = ArgonfileBuilderConfig::default();
 
-        let stats_builder = StatsBuilder::new(memtable.clone())?;
+        let pre_stats = memtable
+            .get_flush_prestats()
+            .map_err(|e| ArgonfileBuilderError::from_source(e))?;
+        let stats_builder = StatsBuilder::new(pre_stats)?;
         let summary_builder = SummaryBuilder::new();
 
         let writer = ArgonfileOffsetCountingWriteWrapper::new(writer);
@@ -50,6 +53,45 @@ impl ArgonfileBuilder {
             &mut writer,
             &Trailer {
                 sstable_id: memtable.object_id,
+                level: 0,
+                summary_block_ptr,
+                stats_block_ptr,
+            },
+        )?;
+
+        writer.into_inner().flush().unwrap();
+
+        Ok(())
+    }
+
+    pub async fn flush_iter<'a, W: Write + Send + Sync, I: KVScanIterator + Send + Sync>(
+        writer: W,
+        mut iter: I,
+        sstable_id: ObjectId,
+        level: u64,
+        pre_stats: KVFlushPreStats,
+    ) -> Result<(), ArgonfileBuilderError> {
+        let config = ArgonfileBuilderConfig::default();
+
+        let stats_builder = StatsBuilder::new(pre_stats)?;
+        let summary_builder = SummaryBuilder::new();
+
+        let writer = ArgonfileOffsetCountingWriteWrapper::new(writer);
+
+        let mut orchestrator =
+            BlocksBuildingOrchestrator::new(&config, writer, stats_builder, summary_builder);
+
+        while let Some(item) = iter.next_mutation().await {
+            orchestrator.add_mutation(item.mutation()).await.unwrap();
+        }
+
+        let (mut writer, summary_block_ptr, stats_block_ptr) = orchestrator.end()?;
+
+        Trailer::serialize(
+            &mut writer,
+            &Trailer {
+                sstable_id,
+                level,
                 summary_block_ptr,
                 stats_block_ptr,
             },

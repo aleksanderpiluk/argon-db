@@ -7,6 +7,7 @@ mod config;
 mod fs;
 mod local_fs;
 mod memtable_flusher;
+mod sstable_compactor;
 
 pub use argon_fs::ArgonFs;
 pub use argon_fs::ArgonFsError;
@@ -16,3 +17,5 @@ pub use local_fs::FsFileSystem;
 pub use local_fs::FsFileSystemConfig;
 pub use memtable_flusher::ArgonFsMemtableFlusher;
 pub use memtable_flusher::ArgonFsMemtableFlusherHandle;
+pub use sstable_compactor::SSTableCompactor;
+pub use sstable_compactor::SSTableCompactorHandle;

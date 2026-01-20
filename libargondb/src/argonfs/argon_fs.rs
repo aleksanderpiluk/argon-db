@@ -12,7 +12,9 @@ use crate::{
         local_fs::FsFileSystem,
     },
     core::persistence::{PersistenceError, PersistenceLayer},
-    kv::{KVInstanceStateSnapshot, KVScannable, KVTableId, ObjectId, schema::KVTableSchema},
+    kv::{
+        KVInstanceStateSnapshot, KVSSTable, KVScannable, KVTableId, ObjectId, schema::KVTableSchema,
+    },
     persistence::OrPersistenceError,
 };
 
@@ -102,14 +104,14 @@ impl PersistenceLayer for ArgonFs {
         &self,
         table_id: &KVTableId,
         table_schema: &KVTableSchema,
-    ) -> Result<Vec<Box<dyn KVScannable>>, PersistenceError> {
+    ) -> Result<Vec<Box<dyn KVSSTable>>, PersistenceError> {
         let sstable_refs = self
             .filesystem
             .scan_table_catalog(table_id, table_schema)
             .await
             .ok_or_persistence_error()?;
 
-        let mut sstables: Vec<Box<dyn KVScannable>> = vec![];
+        let mut sstables: Vec<Box<dyn KVSSTable>> = vec![];
         for file_ref in sstable_refs {
             let argonfile_sstable = ArgonfileSSTable::load(
                 table_schema.clone(),
@@ -146,7 +148,7 @@ impl PersistenceLayer for ArgonFs {
         table_id: &KVTableId,
         sstable_id: ObjectId,
         table_schema: &KVTableSchema,
-    ) -> Result<Box<dyn KVScannable + 'static>, PersistenceError> {
+    ) -> Result<Box<dyn KVSSTable + 'static>, PersistenceError> {
         let file_ref = self
             .filesystem
             .get_sstable_file_ref(table_id, sstable_id)
@@ -163,6 +165,24 @@ impl PersistenceLayer for ArgonFs {
         .ok_or_persistence_error()?;
 
         Ok(Box::new(argonfile_sstable))
+    }
+
+    async fn remove_compacted_sstables(
+        &self,
+        table_id: &KVTableId,
+        sstable_ids: Vec<ObjectId>,
+    ) -> Result<(), PersistenceError> {
+        for sstable_id in sstable_ids {
+            let file_ref = self
+                .filesystem
+                .get_sstable_file_ref(table_id, sstable_id)
+                .await
+                .ok_or_persistence_error()?;
+
+            file_ref.remove().await.ok_or_persistence_error()?;
+        }
+
+        Ok(())
     }
 }
 

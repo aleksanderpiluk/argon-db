@@ -2,7 +2,7 @@ use std::io::Write;
 
 use crate::{
     core::persistence::PersistenceError,
-    kv::{KVInstanceStateSnapshot, KVScannable, KVTableId, KVTableSchema, ObjectId},
+    kv::{KVInstanceStateSnapshot, KVSSTable, KVScannable, KVTableId, KVTableSchema, ObjectId},
 };
 use async_trait::async_trait;
 
@@ -21,7 +21,7 @@ pub trait PersistenceLayer {
         &self,
         table_id: &KVTableId,
         table_schema: &KVTableSchema,
-    ) -> Result<Vec<Box<dyn KVScannable + 'static>>, PersistenceError>;
+    ) -> Result<Vec<Box<dyn KVSSTable + 'static>>, PersistenceError>;
 
     async fn new_file_writer_for_sstable(
         &self,
@@ -34,7 +34,13 @@ pub trait PersistenceLayer {
         table_id: &KVTableId,
         sstable_id: ObjectId,
         table_schema: &KVTableSchema,
-    ) -> Result<Box<dyn KVScannable + 'static>, PersistenceError>;
+    ) -> Result<Box<dyn KVSSTable + 'static>, PersistenceError>;
+
+    async fn remove_compacted_sstables(
+        &self,
+        table_id: &KVTableId,
+        sstable_ids: Vec<ObjectId>,
+    ) -> Result<(), PersistenceError>;
 }
 
 pub type BoxPersistenceLayer = Box<dyn PersistenceLayer + Send + Sync>;

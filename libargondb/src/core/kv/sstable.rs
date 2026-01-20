@@ -3,51 +3,19 @@ use std::{fmt::Debug, mem, sync::Arc};
 use async_trait::async_trait;
 
 use crate::kv::{
+    ObjectId,
     error::KVRuntimeError,
     mutation::KVMutation,
-    scan::{KVRangeScan, KVScanIterator, KVScanIteratorItem},
+    scan::{KVScanIterator, KVScanIteratorItem},
 };
 
 use super::scan::KVScannable;
 
-pub struct KVSSTable {
-    reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>,
-    // summary_index: KVSSTableSummaryIndex,
-    // stats: KVSSTableStats,
+pub trait KVSSTable: KVScannable {
+    fn level(&self) -> u64;
+    fn sstable_id(&self) -> ObjectId;
+    fn mutation_count(&self) -> u64;
 }
-
-impl KVSSTable {
-    pub async fn from_reader(reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>) -> Self {
-        // let (stats, summary_index) = reader.read_stats_and_index().await;
-
-        Self {
-            reader,
-            // summary_index,
-            // stats,
-        }
-    }
-}
-
-impl Debug for KVSSTable {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("KVSSTable").finish()
-    }
-}
-
-// #[async_trait]
-// impl KVScannable for KVSSTable {
-//     async fn range_scan(
-//         &self,
-//         scan: &KVRangeScan,
-//     ) -> Result<Box<dyn KVScanIterator>, KVRuntimeError> {
-//         // 1. Create "scan plan" by iterating through always loaded index and take blocks to scan through
-//         let blocks = self.summary_index.get_range_scan_blocks(scan);
-//         // 2. Create SSTableScanIter and return it - iterator makes proper scan
-//         let reader = self.reader.clone();
-//         let iter = KVSSTableScanIter::new(reader, blocks).await;
-//         Ok(Box::new(iter))
-//     }
-// }
 
 pub struct KVSSTableScanIter {
     reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>,

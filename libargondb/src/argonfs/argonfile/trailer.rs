@@ -12,22 +12,25 @@ pub const ARGONFILE_MAGIC: &'static [u8; 8] = b"ARGNFILE";
 #[derive(Debug)]
 pub struct Trailer {
     pub sstable_id: ObjectId,
+    pub level: u64,
     pub summary_block_ptr: BlockPointer,
     pub stats_block_ptr: BlockPointer,
 }
 
 impl Trailer {
-    pub const SERIALIZED_SIZE: usize = 40;
+    pub const SERIALIZED_SIZE: usize = 48;
 
     pub fn parse(buf: &[u8]) -> ArgonfileParseResult<Trailer> {
         ensure_size(buf.len(), Self::SERIALIZED_SIZE)?;
 
         let sstable_id = u64::from_le_bytes(buf[0..8].try_into().unwrap());
-        let stats_block_ptr = BlockPointer::parse(&buf[8..20])?;
-        let summary_block_ptr = BlockPointer::parse(&buf[20..32])?;
+        let level = u64::from_le_bytes(buf[8..16].try_into().unwrap());
+        let stats_block_ptr = BlockPointer::parse(&buf[16..28])?;
+        let summary_block_ptr = BlockPointer::parse(&buf[28..40])?;
 
         Ok(Self {
             sstable_id: ObjectId(sstable_id),
+            level,
             stats_block_ptr,
             summary_block_ptr,
         })
@@ -40,6 +43,7 @@ impl Trailer {
         let mut writer = ArgonfileSizeCountingWriter::new(w);
 
         writer.write(&u64::to_le_bytes(trailer.sstable_id.0))?;
+        writer.write(&u64::to_le_bytes(trailer.level))?;
         BlockPointer::serialize(&mut writer, &trailer.stats_block_ptr)?;
         BlockPointer::serialize(&mut writer, &trailer.summary_block_ptr)?;
         writer.write(ARGONFILE_MAGIC)?;

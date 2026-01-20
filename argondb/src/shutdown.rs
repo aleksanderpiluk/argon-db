@@ -1,5 +1,4 @@
 use async_io::block_on;
-use libargondb::ArgonFsMemtableFlusherHandle;
 use libargondb::ConnectorHandle;
 use libargondb::DbCtx;
 use std::thread;
@@ -34,6 +33,7 @@ fn shutdown_thread(system_ctx: SystemCtx) -> CriticalResult<()> {
     close_connectors(system_ctx.connector_handles)?;
 
     close_kv_instance_and_tables(&system_ctx.db_ctx)?;
+    system_ctx.sstable_compactor_handle.close();
     system_ctx.memtable_flusher_handle.close();
 
     persist_instance_state_snapshot(&system_ctx.db_ctx)?;

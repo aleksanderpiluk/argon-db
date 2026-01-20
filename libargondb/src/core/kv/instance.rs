@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::{
     kv::{
-        KVRuntimeError, KVRuntimeErrorKind, KVTable,
+        KVRuntimeError, KVRuntimeErrorKind, KVTable, ObjectId,
         config::KVConfig,
         memtable::{KVMemtableFlushRequest, Memtable},
         object_id::ObjectIdGenerator,
@@ -91,6 +91,10 @@ impl KVInstance {
 
             Some(next_state)
         });
+    }
+
+    pub fn generate_compacted_sstable_id(&self) -> ObjectId {
+        self.object_id_generator.next()
     }
 }
 
