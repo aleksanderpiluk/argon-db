@@ -96,6 +96,16 @@ impl MutationComparator {
             ord => return Ok(ord),
         }
 
+        match (this.mutation_type(), that.mutation_type()) {
+            (MutationType::End, MutationType::End) => return Ok(Ordering::Equal),
+            (MutationType::End, _) => return Ok(Ordering::Greater),
+            (MutationType::Start, MutationType::Start) => return Ok(Ordering::Equal),
+            (MutationType::Start, _) => return Ok(Ordering::Less),
+            (_, MutationType::Start) => return Ok(Ordering::Greater),
+            (_, MutationType::End) => return Ok(Ordering::Less),
+            _ => {}
+        }
+
         match this.timestamp().cmp(&that.timestamp()) {
             Ordering::Equal => {}
             Ordering::Greater => return Ok(Ordering::Less),
@@ -291,5 +301,139 @@ impl MutationUtils {
         );
 
         Ok(out)
+    }
+}
+
+#[cfg(test)]
+mod mutation_comparator_tests {
+    use std::cmp::Ordering;
+
+    use crate::kv::{
+        KVTableSchema,
+        column_type::{ColumnTypeCode, ColumnTypeSerialize, ColumnTypeText},
+        mutation::{MutationComparator, MutationType, StructuredMutation},
+        primary_key::{self, KVPrimaryKeySchema, PrimaryKeyBuilder},
+        schema::KVColumnSchema,
+    };
+
+    #[test]
+    fn test_cmp() {
+        let table_schema = KVTableSchema::build(
+            vec![KVColumnSchema {
+                column_id: 1,
+                column_name: "test_col".into(),
+                column_type: ColumnTypeCode::Text,
+            }],
+            vec![1],
+        )
+        .unwrap();
+        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&table_schema);
+
+        let mut pk_builder = PrimaryKeyBuilder::new(&pk_schema);
+        pk_builder.add_value(&ColumnTypeText::serialize("abcd").unwrap());
+        let primary_key = pk_builder.build();
+
+        let mut pk_builder = PrimaryKeyBuilder::new(&pk_schema);
+        pk_builder.add_value(&ColumnTypeText::serialize("defg").unwrap());
+        let primary_key_2 = pk_builder.build();
+
+        let value: Box<[u8]> = Box::from("abcd".as_bytes());
+        let mutation = StructuredMutation::try_from(
+            123456,
+            1,
+            MutationType::Put,
+            primary_key.clone(),
+            value.clone(),
+        )
+        .unwrap();
+
+        let mutation_2 = StructuredMutation::try_from(
+            123456,
+            1,
+            MutationType::Put,
+            primary_key_2.clone(),
+            value,
+        )
+        .unwrap();
+
+        assert_eq!(
+            MutationComparator::cmp(
+                &pk_schema,
+                &StructuredMutation::start(primary_key.clone()).unwrap(),
+                &StructuredMutation::start(primary_key.clone()).unwrap(),
+            )
+            .unwrap(),
+            Ordering::Equal
+        );
+
+        assert_eq!(
+            MutationComparator::cmp(
+                &pk_schema,
+                &StructuredMutation::end(primary_key.clone()).unwrap(),
+                &StructuredMutation::end(primary_key.clone()).unwrap(),
+            )
+            .unwrap(),
+            Ordering::Equal
+        );
+
+        assert_eq!(
+            MutationComparator::cmp(
+                &pk_schema,
+                &StructuredMutation::end(primary_key.clone()).unwrap(),
+                &StructuredMutation::from_mutation(&mutation),
+            )
+            .unwrap(),
+            Ordering::Greater
+        );
+
+        assert_eq!(
+            MutationComparator::cmp(
+                &pk_schema,
+                &StructuredMutation::from_mutation(&mutation),
+                &StructuredMutation::end(primary_key.clone()).unwrap(),
+            )
+            .unwrap(),
+            Ordering::Less
+        );
+
+        assert_eq!(
+            MutationComparator::cmp(
+                &pk_schema,
+                &StructuredMutation::start(primary_key.clone()).unwrap(),
+                &StructuredMutation::from_mutation(&mutation),
+            )
+            .unwrap(),
+            Ordering::Less
+        );
+
+        assert_eq!(
+            MutationComparator::cmp(
+                &pk_schema,
+                &StructuredMutation::from_mutation(&mutation),
+                &StructuredMutation::start(primary_key.clone()).unwrap(),
+            )
+            .unwrap(),
+            Ordering::Greater
+        );
+
+        assert_eq!(
+            MutationComparator::cmp(
+                &pk_schema,
+                &StructuredMutation::from_mutation(&mutation),
+                &StructuredMutation::from_mutation(&mutation_2),
+            )
+            .unwrap(),
+            Ordering::Less
+        );
+
+        assert_eq!(
+            MutationComparator::cmp(
+                &pk_schema,
+                &StructuredMutation::from_mutation(&mutation_2),
+                &StructuredMutation::from_mutation(&mutation),
+            )
+            .unwrap(),
+            Ordering::Greater
+        );
     }
 }

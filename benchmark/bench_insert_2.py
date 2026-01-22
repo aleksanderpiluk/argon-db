@@ -1,25 +1,39 @@
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from google.protobuf import struct_pb2
 
 import argondb_pb2_grpc as rpc
-import scan_table_pb2 as scan_pb
+import insert_mutations_pb2 as insert_pb
 from bench_common import create_channel, write_csv, latency_stats
 
 TABLE = "bench_table_0"
 
-CONCURRENCY = [1, 2, 4, 8, 16]
-REQUESTS_PER_WORKER = 50
+CONCURRENCY = [1, 2, 4, 8, 16, 32]
+REQUESTS_PER_WORKER = 29000
 
-def worker(target):
+def worker(worker_id, target):
     channel = create_channel(target)
     client = rpc.ArgonDbStub(channel)
 
-    req = scan_pb.ScanTableRequest(table_name=TABLE)
     latencies = []
 
-    for _ in range(REQUESTS_PER_WORKER):
+    for i in range(REQUESTS_PER_WORKER):
+        row_id = f"{worker_id:04d}{i:08d}"
+
+        req = insert_pb.InsertMutationsRequest(
+            table_name=TABLE,
+            values={
+                "id": struct_pb2.Value(
+                    string_value=row_id
+                ),
+                "value": struct_pb2.Value(
+                    number_value=i % 65536
+                ),
+            },
+        )
+
         start = time.perf_counter()
-        list(client.ScanTable(req).rows)
+        client.InsertMutations(req)
         latencies.append(time.perf_counter() - start)
 
     return latencies
@@ -33,7 +47,10 @@ def main(target="localhost:50051"):
         latencies = []
 
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = [pool.submit(worker, target) for _ in range(workers)]
+            futures = [
+                pool.submit(worker, w, target)
+                for w in range(workers)
+            ]
             for f in as_completed(futures):
                 latencies.extend(f.result())
 
@@ -53,13 +70,13 @@ def main(target="localhost:50051"):
         ])
 
         print(
-            f"[Scan] workers={workers} "
+            f"[Insert] workers={workers} "
             f"throughput={throughput:.1f} ops/s "
             f"p95={stats['p95_ms']:.2f} ms"
         )
 
     write_csv(
-        "results/scan.csv",
+        "results/insert_2.csv",
         [
             "workers",
             "total_ops",

@@ -3,15 +3,26 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from google.protobuf import struct_pb2
 
 import argondb_pb2_grpc as rpc
-import insert_mutations_pb2 as insert_pb
+import read_row_pb2 as read_pb
 from bench_common import create_channel, write_csv, latency_stats
 
 TABLE = "bench_table_0"
 
+# Must match insert benchmark
 CONCURRENCY = [1, 2, 4, 8, 16, 32]
-REQUESTS_PER_WORKER = 5000
+REQUESTS_PER_WORKER = 20000
 
-def worker(worker_id, target):
+PK_COLUMN = "id"
+ENABLE_SANITY_CHECKS = True
+
+
+def make_pk(value: str):
+    return {
+        PK_COLUMN: struct_pb2.Value(string_value=value)
+    }
+
+
+def worker(worker_id: int, target: str):
     channel = create_channel(target)
     client = rpc.ArgonDbStub(channel)
 
@@ -20,21 +31,34 @@ def worker(worker_id, target):
     for i in range(REQUESTS_PER_WORKER):
         row_id = f"{worker_id:04d}{i:08d}"
 
-        req = insert_pb.InsertMutationsRequest(
+        req = read_pb.ReadRowRequest(
             table_name=TABLE,
-            values={
-                "id": struct_pb2.Value(
-                    string_value=row_id
-                ),
-                "value": struct_pb2.Value(
-                    number_value=i % 65536
-                ),
-            },
+            primary_key_values=make_pk(row_id),
         )
 
         start = time.perf_counter()
-        client.InsertMutations(req)
+        resp = client.ReadRow(req)
         latencies.append(time.perf_counter() - start)
+
+        if ENABLE_SANITY_CHECKS:
+            # 1️⃣ must return something
+            if not resp.values:
+                raise RuntimeError(
+                    f"ReadRow returned empty for PK={row_id}"
+                )
+
+            # 2️⃣ must contain PK
+            if PK_COLUMN not in resp.values:
+                raise RuntimeError(
+                    f"ReadRow missing PK column for PK={row_id}"
+                )
+
+            # 3️⃣ PK must match
+            pk_value = resp.values[PK_COLUMN].string_value
+            if pk_value != row_id:
+                raise RuntimeError(
+                    f"ReadRow PK mismatch: expected={row_id}, got={pk_value}"
+                )
 
     return latencies
 
@@ -70,13 +94,13 @@ def main(target="localhost:50051"):
         ])
 
         print(
-            f"[Insert] workers={workers} "
+            f"[ReadRow] workers={workers} "
             f"throughput={throughput:.1f} ops/s "
             f"p95={stats['p95_ms']:.2f} ms"
         )
 
     write_csv(
-        "results/insert.csv",
+        "results/read_row_2.csv",
         [
             "workers",
             "total_ops",
@@ -88,6 +112,7 @@ def main(target="localhost:50051"):
         ],
         rows,
     )
+
 
 if __name__ == "__main__":
     main()

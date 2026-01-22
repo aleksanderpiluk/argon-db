@@ -49,6 +49,9 @@ def plot(csv_path, title, out_name):
     print(f"Saved {out_path}")
 
 if __name__ == "__main__":
-    plot("results/insert.csv", "InsertMutations Benchmark", "insert.png")
-    plot("results/scan.csv", "ScanTable Benchmark", "scan.png")
-    plot("results/read_row.csv", "ReadRow Benchmark", "read_row.png")
+    plot("results/insert.csv", "InsertMutations - 5k rows per worker", "insert.png")
+    plot("results/insert_2.csv", "InsertMutations 29k rows per worker", "insert_2.png")
+    plot("results/scan.csv", "ScanTable - 5k rows per worker", "scan.png")
+    plot("results/scan_2.csv", "ScanTable - 20k rows per worker", "scan_2.png")
+    plot("results/read_row.csv", "ReadRow - 1k rows per worker", "read_row.png")
+    plot("results/read_row_2.csv", "ReadRow - 20k rows per worker", "read_row_2.png")

@@ -226,7 +226,8 @@ impl std::fmt::Display for Memtable {
 #[async_trait]
 impl KVScannable for Memtable {
     async fn range_scan(&self, scan: &KVRangeScan) -> Result<KVRangeScanResult, KVRuntimeError> {
-        let iter = self.get_range_iterator(scan)?;
+        let iter: Box<dyn Iterator<Item = Entry<'_, MemtableMutation>> + Send + Sync> =
+            self.get_range_iterator(scan)?;
         Ok(KVRangeScanResult::Iter(Box::new(PrintIter::new(
             format!("Memtable id={}", self.object_id),
             MemtableScanResultsIter::new(iter),
