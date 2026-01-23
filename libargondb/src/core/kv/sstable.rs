@@ -1,13 +1,8 @@
-use std::{fmt::Debug, mem, sync::Arc};
+use std::fmt::Debug;
 
 use async_trait::async_trait;
 
-use crate::kv::{
-    ObjectId,
-    error::KVRuntimeError,
-    mutation::KVMutation,
-    scan::{KVScanIterator, KVScanIteratorItem},
-};
+use crate::kv::{ObjectId, error::KVRuntimeError, mutation::KVMutation, scan::KVScanIteratorItem};
 
 use super::scan::KVScannable;
 
@@ -17,83 +12,8 @@ pub trait KVSSTable: KVScannable {
     fn mutation_count(&self) -> u64;
 }
 
-pub struct KVSSTableScanIter {
-    reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>,
-    blocks: Vec<KVSSTableBlockPtr>,
-    next_block_idx: usize,
-    current_block_iter: Option<Box<dyn KVSSTableDataBlockIter + Send + Sync>>,
-    current_entry: Option<Box<dyn KVScanIteratorItem + Send + Sync>>,
-}
-
-impl KVSSTableScanIter {
-    async fn new(
-        reader: Arc<Box<dyn KVSSTableReader + Send + Sync>>,
-        blocks: Vec<KVSSTableBlockPtr>,
-    ) -> Self {
-        let mut this = Self {
-            reader,
-            blocks,
-            next_block_idx: 0,
-            current_block_iter: None,
-            current_entry: None,
-        };
-
-        // Load first entry on initialization
-        this.load_next_iter().await;
-        this.load_next_entry().await;
-
-        this
-    }
-
-    async fn load_next_iter(&mut self) {
-        if let Some(block) = self.blocks.get(self.next_block_idx) {
-            self.next_block_idx += 1;
-
-            let next_iter = self.reader.read_data_block(block).await;
-            self.current_block_iter = Some(next_iter);
-        } else {
-            self.current_block_iter = None;
-        }
-    }
-
-    async fn load_next_entry(&mut self) {
-        loop {
-            if let Some(iter) = &mut self.current_block_iter {
-                if let Some(entry) = iter.next() {
-                    self.current_entry = Some(entry);
-                    break;
-                } else {
-                    self.load_next_iter();
-                }
-            } else {
-                self.current_entry = None;
-                break;
-            }
-        }
-    }
-}
-
-#[async_trait]
-impl KVScanIterator for KVSSTableScanIter {
-    async fn next_mutation(&mut self) -> Option<Box<dyn KVScanIteratorItem + Send + Sync>> {
-        let entry = mem::take(&mut self.current_entry);
-        self.load_next_entry();
-        entry
-    }
-
-    fn peek_mutation(&self) -> Option<&Box<dyn KVScanIteratorItem + Send + Sync>> {
-        if let Some(entry) = &self.current_entry {
-            Some(entry)
-        } else {
-            None
-        }
-    }
-}
-
 #[async_trait]
 pub trait KVSSTableReader {
-    // async fn read_stats_and_index(&self) -> (KVSSTableStats, KVSSTableSummaryIndex);
-
     async fn read_data_block(
         &self,
         ptr: &KVSSTableBlockPtr,

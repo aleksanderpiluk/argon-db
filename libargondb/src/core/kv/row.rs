@@ -3,8 +3,7 @@ use std::{collections::BTreeMap, fmt::Debug};
 use crate::kv::{
     KVRuntimeError, KVRuntimeErrorKind, KVScanIteratorItem, KVTableSchema,
     column_type::{
-        ColumnType, ColumnTypeCode, ColumnTypeDeserialize, ColumnTypeText, ColumnTypeU16,
-        ColumnTypeU16Array,
+        ColumnTypeCode, ColumnTypeDeserialize, ColumnTypeText, ColumnTypeU16, ColumnTypeU16Array,
     },
     primary_key::{KVPrimaryKeyComparator, KVPrimaryKeySchema},
 };
@@ -100,7 +99,7 @@ impl KVRowBuilder {
         table_schema: KVTableSchema,
         item: Box<dyn KVScanIteratorItem + Send + Sync>,
     ) -> Self {
-        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&table_schema);
+        let pk_schema = KVPrimaryKeySchema::from_table_schema(&table_schema);
 
         let primary_key = item.primary_key().to_vec().into_boxed_slice();
 

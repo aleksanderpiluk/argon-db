@@ -87,8 +87,8 @@ async fn compact_sstables(
     table: Arc<KVTable>,
     sstables: Vec<Arc<Box<dyn KVSSTable>>>,
 ) {
-    let pk_schema = KVPrimaryKeySchema::from_columns_schema(&table.table_schema);
-    let mut merge_iter = KVMergeScanIter::new(table.table_schema.clone(), pk_schema.clone());
+    let pk_schema = KVPrimaryKeySchema::from_table_schema(&table.table_schema);
+    let mut merge_iter = KVMergeScanIter::new(pk_schema.clone());
 
     let mut pre_stats_builder = MergePreStatsBuilder::new();
 

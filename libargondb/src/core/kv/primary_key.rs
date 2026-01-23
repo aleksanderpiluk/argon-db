@@ -15,7 +15,7 @@ use std::cmp::Ordering;
 pub struct KVPrimaryKeySchema(Box<[u8]>);
 
 impl KVPrimaryKeySchema {
-    pub fn from_columns_schema(columns_schema: &KVTableSchema) -> Self {
+    pub fn from_table_schema(columns_schema: &KVTableSchema) -> Self {
         let column_count = columns_schema.primary_key.len();
         assert!(column_count > 0);
         assert!(column_count <= u8::MAX as usize);
@@ -262,7 +262,7 @@ impl KVPrimaryKeyUtils {
     }
 
     pub fn debug_fmt(schema: &KVTableSchema, key: &[u8]) -> Result<String, ()> {
-        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&schema);
+        let pk_schema = KVPrimaryKeySchema::from_table_schema(&schema);
         let mut pk_view = PrimaryKeyView::construct(&pk_schema, key).map_err(|_| ())?;
 
         let mut out = String::from("|");
@@ -282,7 +282,7 @@ pub struct KVPrimaryKeyMarkerUtils;
 
 impl KVPrimaryKeyMarkerUtils {
     pub fn debug_fmt(schema: &KVTableSchema, key: &KVPrimaryKeyMarker) -> Result<String, ()> {
-        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&schema);
+        let pk_schema = KVPrimaryKeySchema::from_table_schema(&schema);
 
         match key {
             KVPrimaryKeyMarker::Start => Ok("Start".to_string()),

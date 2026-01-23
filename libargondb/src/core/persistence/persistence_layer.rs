@@ -2,7 +2,7 @@ use std::io::Write;
 
 use crate::{
     core::persistence::PersistenceError,
-    kv::{KVInstanceStateSnapshot, KVSSTable, KVScannable, KVTableId, KVTableSchema, ObjectId},
+    kv::{KVInstanceStateSnapshot, KVSSTable, KVTableId, KVTableSchema, ObjectId},
 };
 use async_trait::async_trait;
 

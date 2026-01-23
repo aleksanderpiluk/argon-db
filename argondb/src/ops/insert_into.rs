@@ -62,7 +62,7 @@ impl InsertIntoOp {
 
         prepared_values.sort_by(|a, b| a.column_id.cmp(&b.column_id));
 
-        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&table.table_schema);
+        let pk_schema = KVPrimaryKeySchema::from_table_schema(&table.table_schema);
         let mut pk_builder = PrimaryKeyBuilder::new(&pk_schema);
         for column_id in &table.table_schema.primary_key {
             let Ok(idx) = prepared_values

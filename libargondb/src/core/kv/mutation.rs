@@ -312,7 +312,7 @@ mod mutation_comparator_tests {
         KVTableSchema,
         column_type::{ColumnTypeCode, ColumnTypeSerialize, ColumnTypeText},
         mutation::{MutationComparator, MutationType, StructuredMutation},
-        primary_key::{self, KVPrimaryKeySchema, PrimaryKeyBuilder},
+        primary_key::{KVPrimaryKeySchema, PrimaryKeyBuilder},
         schema::KVColumnSchema,
     };
 
@@ -327,7 +327,7 @@ mod mutation_comparator_tests {
             vec![1],
         )
         .unwrap();
-        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&table_schema);
+        let pk_schema = KVPrimaryKeySchema::from_table_schema(&table_schema);
 
         let mut pk_builder = PrimaryKeyBuilder::new(&pk_schema);
         pk_builder.add_value(&ColumnTypeText::serialize("abcd").unwrap());

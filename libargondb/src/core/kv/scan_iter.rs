@@ -1,3 +1,5 @@
+use binary_heap_plus::BinaryHeap;
+use compare::Compare;
 use std::{
     cmp::Ordering,
     mem::{replace, take},
@@ -7,78 +9,60 @@ use async_trait::async_trait;
 
 use crate::kv::{
     KVRow, KVRuntimeError, KVScanIterator, KVScanIteratorItem, KVTableSchema,
-    mutation::{MutationComparator, MutationUtils},
-    primary_key::KVPrimaryKeySchema,
-    row::KVRowBuilder,
+    mutation::MutationComparator, primary_key::KVPrimaryKeySchema, row::KVRowBuilder,
 };
 
 type BoxKVScanIterator = Box<dyn KVScanIterator + Send + Sync>;
 
 pub struct KVMergeScanIter {
-    table_schema: KVTableSchema,
-    schema: KVPrimaryKeySchema,
-    heap: Vec<BoxKVScanIterator>,
+    heap: BinaryHeap<BoxKVScanIterator, KVMergeScanIterComparator>,
 }
 
 impl KVMergeScanIter {
-    pub fn new(table_schema: KVTableSchema, schema: KVPrimaryKeySchema) -> Self {
+    pub fn new(schema: KVPrimaryKeySchema) -> Self {
         Self {
-            table_schema,
-            schema,
-            heap: vec![],
+            heap: BinaryHeap::from_vec_cmp(vec![], KVMergeScanIterComparator { schema }),
         }
     }
 
     pub fn add_iter(&mut self, iter: BoxKVScanIterator) {
         self.heap.push(iter);
-        self.heapify();
-    }
-
-    fn heapify(&mut self) {
-        self.heap
-            .sort_by(|a, b| match (a.peek_mutation(), b.peek_mutation()) {
-                (None, None) => Ordering::Equal,
-                (Some(_), None) => Ordering::Less,
-                (None, Some(_)) => Ordering::Greater,
-                (Some(a), Some(b)) => {
-                    MutationComparator::cmp(&self.schema, a.mutation(), b.mutation()).unwrap()
-                }
-            });
-
-        let mut out = String::from("");
-        for iter in &self.heap {
-            out += &format!(
-                "{}, ",
-                match &iter.peek_mutation() {
-                    Some(mutation) =>
-                        MutationUtils::debug_fmt(&self.table_schema, mutation.mutation()).unwrap(),
-                    None => "None".to_string(),
-                }
-            );
-        }
-        #[cfg(debug_assertions)]
-        println!("Heapified: {}", out);
     }
 }
 
 #[async_trait]
 impl KVScanIterator for KVMergeScanIter {
     async fn next_mutation(&mut self) -> Option<Box<dyn KVScanIteratorItem + Send + Sync>> {
-        let Some(iter) = self.heap.get_mut(0) else {
+        let Some(mut iter) = self.heap.peek_mut() else {
             return None;
         };
 
         let mutation = iter.next_mutation().await;
 
-        self.heapify();
-
         mutation
     }
 
     fn peek_mutation(&self) -> Option<&Box<dyn KVScanIteratorItem + Send + Sync>> {
-        match self.heap.get(0) {
-            Some(ref iter) => iter.peek_mutation(),
+        match self.heap.peek() {
+            Some(iter) => iter.peek_mutation(),
             None => None,
+        }
+    }
+}
+
+struct KVMergeScanIterComparator {
+    schema: KVPrimaryKeySchema,
+}
+
+impl Compare<BoxKVScanIterator> for KVMergeScanIterComparator {
+    fn compare(&self, l: &BoxKVScanIterator, r: &BoxKVScanIterator) -> Ordering {
+        match (l.peek_mutation(), r.peek_mutation()) {
+            (None, None) => Ordering::Equal,
+            (Some(_), None) => Ordering::Greater,
+            (None, Some(_)) => Ordering::Less,
+            (Some(a), Some(b)) => MutationComparator::cmp(&self.schema, a.mutation(), b.mutation())
+                .unwrap()
+                .reverse(),
         }
     }
 }

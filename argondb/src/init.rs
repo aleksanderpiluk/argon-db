@@ -175,7 +175,6 @@ async fn scan_user_table_columns(
         .lookup_table_by_name(&SystemTableNames::ARGONSYS_COLUMNS)
         .ok_or(CriticalError::from_msg("argonsys columns critical error"))?;
 
-    // todo!("proper scan op");
     // TODO: Should be replaced with more advanced query
     let mut scan = argonsys_columns
         .scan(KVRangeScan::new(

@@ -127,8 +127,8 @@ impl KVTable {
 
         let table_state = self.state.load();
 
-        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&self.table_schema);
-        let mut result_iter = KVMergeScanIter::new(self.table_schema.clone(), pk_schema.clone());
+        let pk_schema = KVPrimaryKeySchema::from_table_schema(&self.table_schema);
+        let mut result_iter = KVMergeScanIter::new(pk_schema.clone());
 
         for scannable in table_state.list_scannable()? {
             // TODO: Scannable check preconditions (bloom filters etc.)

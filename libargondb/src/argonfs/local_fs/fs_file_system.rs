@@ -5,7 +5,7 @@ use crossbeam::queue::ArrayQueue;
 
 use crate::{
     argonfs::{
-        fs::{BoxFileRef, FileSystem, FileSystemError, TableCatalogRef},
+        fs::{BoxFileRef, FileSystem, FileSystemError},
         local_fs::{FsFileSystemConfig, fs_file_ref::FsFileRef, fs_path_factory::FsPathFactory},
     },
     kv::{KVTableId, KVTableSchema, ObjectId},
@@ -29,24 +29,6 @@ impl FsFileSystem {
 
 #[async_trait]
 impl FileSystem for FsFileSystem {
-    async fn scan_table_catalogs(&self) -> Result<Vec<Box<dyn TableCatalogRef>>, FileSystemError> {
-        let tables_root_dir = self.ctx.path_factory.tables_root();
-        let dir_entries = fs::read_dir(tables_root_dir)?;
-
-        let refs = vec![];
-
-        for entry in dir_entries {
-            let entry = entry?;
-            let entry_path = entry.path();
-
-            if entry_path.is_dir() {
-                todo!();
-            }
-        }
-
-        Ok(refs)
-    }
-
     async fn scan_table_catalog(
         &self,
         table_id: &KVTableId,

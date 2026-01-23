@@ -84,7 +84,7 @@ impl KVScannable for ArgonfileSSTable {
         &self,
         range_scan: &KVRangeScan,
     ) -> Result<KVRangeScanResult, KVRuntimeError> {
-        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&self.schema);
+        let pk_schema = KVPrimaryKeySchema::from_table_schema(&self.schema);
 
         let is_intersecting = self
             .argonfile
@@ -112,7 +112,7 @@ impl KVScannable for ArgonfileSSTable {
     }
 
     async fn row_scan(&self, primary_key: &[u8]) -> Result<KVRangeScanResult, KVRuntimeError> {
-        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&self.schema);
+        let pk_schema = KVPrimaryKeySchema::from_table_schema(&self.schema);
 
         let is_intersecting = self
             .argonfile
