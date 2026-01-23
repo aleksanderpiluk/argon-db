@@ -1,0 +1,20 @@
+syntax = "proto3";
+package argondb;
+
+import "google/protobuf/empty.proto";
+import "types.proto";
+import "create-table.proto";
+import "scan-table.proto";
+import "insert-mutations.proto";
+import "mutate-row.proto";
+import "read-row.proto";
+import "list-tables.proto";
+
+service ArgonDb {
+    rpc CreateTable(CreateTableRequest) returns (Table);
+    rpc ListTables(google.protobuf.Empty) returns (ListTablesResponse);
+    rpc ScanTable(ScanTableRequest) returns (ScanTableResponse);
+    rpc InsertMutations(InsertMutationsRequest) returns (InsertMutationsResponse);
+    rpc MutateRow(MutateRowRequest) returns (google.protobuf.Empty);
+    rpc ReadRow(ReadRowRequest) returns (ReadRowResponse);
+}

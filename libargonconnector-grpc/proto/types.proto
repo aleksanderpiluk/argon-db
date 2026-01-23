@@ -1,0 +1,19 @@
+syntax = "proto3";
+package argondb;
+
+message ColumnDefinition {
+    string column_name = 1;
+}
+
+message Table {
+    string table_name = 1;
+    repeated ColumnDefinition columns = 2;
+}
+
+message Cell {
+    string row_key = 1;
+    string family = 2;
+    string column = 3;
+    int64 timestamp = 4;
+    bytes value = 5;
+}

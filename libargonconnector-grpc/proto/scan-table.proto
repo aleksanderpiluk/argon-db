@@ -1,0 +1,23 @@
+syntax = "proto3";
+package argondb;
+
+import "google/protobuf/struct.proto";
+import "types.proto";
+
+message ScanTableResponse {
+    repeated ScanTableResponseRow rows = 1;
+}
+
+message ScanTableRequest {
+    string table_name = 1;
+    optional PrimaryKeyMarker from = 2;
+    optional PrimaryKeyMarker to = 3;
+}
+
+message PrimaryKeyMarker {
+  map<string, google.protobuf.Value> values = 2;
+}
+
+message ScanTableResponseRow {
+    map<string, google.protobuf.Value> values = 1;
+}
