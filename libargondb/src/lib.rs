@@ -4,9 +4,7 @@ mod catalog;
 mod connector;
 mod core;
 mod db_ctx;
-pub mod ops;
 mod utils;
-mod wal;
 
 pub use core::kv;
 pub use core::persistence;

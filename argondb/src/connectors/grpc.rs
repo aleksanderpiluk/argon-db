@@ -220,7 +220,7 @@ impl argondb_service_definition::argon_db_server::ArgonDb for ArgonDbHandlers {
                 table_name
             )))?;
 
-        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&table.table_schema);
+        let pk_schema = KVPrimaryKeySchema::from_table_schema(&table.table_schema);
 
         let from: KVPrimaryKeyMarker = req
             .from
@@ -350,7 +350,7 @@ impl argondb_service_definition::argon_db_server::ArgonDb for ArgonDbHandlers {
                 table_name
             )))?;
 
-        let pk_schema = KVPrimaryKeySchema::from_columns_schema(&table.table_schema);
+        let pk_schema = KVPrimaryKeySchema::from_table_schema(&table.table_schema);
 
         let values = req.primary_key_values.clone();
         let mut pk_builder = PrimaryKeyBuilder::new(&pk_schema);

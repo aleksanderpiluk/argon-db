@@ -40,7 +40,7 @@ pub struct Memtable {
 impl Memtable {
     pub fn new(object_id: ObjectId, table: Arc<KVTable>, size_limit: usize) -> Self {
         let primary_key_schema =
-            Arc::new(KVPrimaryKeySchema::from_columns_schema(&table.table_schema));
+            Arc::new(KVPrimaryKeySchema::from_table_schema(&table.table_schema));
 
         Self {
             object_id,

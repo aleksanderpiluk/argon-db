@@ -3,13 +3,11 @@ use std::io;
 use async_trait::async_trait;
 use thiserror::Error;
 
-use super::{BoxFileRef, TableCatalogRef};
+use super::BoxFileRef;
 use crate::kv::{KVTableId, KVTableSchema, ObjectId};
 
 #[async_trait]
 pub trait FileSystem {
-    async fn scan_table_catalogs(&self) -> Result<Vec<Box<dyn TableCatalogRef>>, FileSystemError>;
-
     async fn scan_table_catalog(
         &self,
         table_id: &KVTableId,

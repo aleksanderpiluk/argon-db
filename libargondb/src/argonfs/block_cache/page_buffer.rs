@@ -134,10 +134,6 @@ impl BlockExclusiveGuard {
             }
         }
     }
-
-    pub fn to_shared(self) -> BlockSharedGuard {
-        todo!()
-    }
 }
 
 impl Deref for BlockExclusiveGuard {
@@ -202,12 +198,12 @@ impl BlockSharedGuard {
         unsafe { BlockExclusiveGuard::acquire_for(header) }
     }
 
-    pub fn try_to_exclusive(self) -> Result<BlockExclusiveGuard, TryExclusiveLockError> {
-        let header = self.header();
-        drop(self);
+    // pub fn try_to_exclusive(self) -> Result<BlockExclusiveGuard, TryExclusiveLockError> {
+    //     let header = self.header();
+    //     drop(self);
 
-        unsafe { BlockExclusiveGuard::try_acquire_for(header) }
-    }
+    //     unsafe { BlockExclusiveGuard::try_acquire_for(header) }
+    // }
 
     pub fn to_block_view(self) -> Box<BlockView> {
         Box::new(BlockView::new(self))

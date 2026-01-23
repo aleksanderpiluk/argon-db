@@ -1,9 +1,7 @@
-mod catalog_ref;
 mod file_handle;
 mod file_ref;
 mod file_system;
 
-pub use catalog_ref::TableCatalogRef;
 pub use file_handle::FileHandleError;
 pub use file_handle::ReadData;
 pub use file_handle::ReadOnlyFileHandle;
