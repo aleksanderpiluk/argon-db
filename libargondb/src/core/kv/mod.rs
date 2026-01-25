@@ -1,10 +1,10 @@
 pub mod column_type;
 mod column_value;
 pub mod config;
+mod core;
 mod error;
 mod instance;
 mod iter;
-mod limits;
 pub mod memtable;
 pub mod mutation;
 mod object_id;
@@ -12,11 +12,14 @@ pub mod primary_key;
 mod row;
 mod scan;
 mod scan_iter;
-pub mod schema;
 mod sstable;
 mod table;
+#[cfg(test)]
+mod tests;
+mod value;
+mod value_type;
 
-pub use sstable::{KVSSTableBuilder, KVSSTableDataBlockIter, KVSSTableReader};
+pub use sstable::{KVSSTableBuilder, KVSSTableDataBlockIter};
 
 pub use column_value::KVColumnValue;
 pub use column_value::KVColumnValueBuilder;
@@ -26,7 +29,6 @@ pub use instance::KVInstance;
 pub use instance::KVInstanceStateSnapshot;
 pub use iter::PrintIter;
 pub use iter::ShadowingIter;
-pub use limits::KVLimits;
 pub use memtable::KVFlushPreStats;
 pub use object_id::ObjectId;
 pub use object_id::ObjectIdGenerator;
@@ -41,9 +43,7 @@ pub use scan::KVScanIteratorItem;
 pub use scan::KVScannable;
 pub use scan_iter::KVMergeScanIter;
 pub use scan_iter::KVRowIter;
-pub use schema::KVTableSchema;
 pub use sstable::KVSSTable;
-pub use sstable::KVSSTableBlockPtr;
 pub use table::KVTable;
 pub use table::KVTableId;
 pub use table::KVTableIdConversionError;

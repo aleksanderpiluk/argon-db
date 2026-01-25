@@ -1,3 +1,4 @@
+mod schema;
 mod table;
 mod table_id;
 mod table_name;

@@ -1,7 +1,4 @@
-use crate::{
-    argonfs::argonfile::BlockPointer,
-    kv::{KVSSTableBlockPtr, ObjectId},
-};
+use crate::{argonfs::argonfile::BlockPointer, kv::ObjectId};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct BlockTag {

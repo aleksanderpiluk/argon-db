@@ -1,12 +1,15 @@
+pub struct TableSchema;
+
+impl TableSchema {
+    pub const MAX_COLUMNS_IN_TABLE: u16 = 1024;
+}
+
 use std::{
     collections::{BTreeMap, HashSet},
     fmt::{Debug, Display},
 };
 
-use crate::{
-    ensure,
-    kv::{KVLimits, column_type::ColumnTypeCode},
-};
+use crate::{ensure, kv::column_type::ColumnTypeCode};
 
 #[derive(Clone)]
 pub struct KVTableSchema {
