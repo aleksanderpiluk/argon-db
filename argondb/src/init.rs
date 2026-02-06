@@ -2,7 +2,7 @@ use libargondb::{
     ArgonFs, ArgonFsConfig, Catalog, DbCtx,
     kv::{
         KVColumnFilter, KVInstance, KVInstanceStateSnapshot, KVPrimaryKeyMarker, KVRangeScan,
-        KVTable, KVTableId, KVTableName, KVTableSchema,
+        Id, Name, KVTableSchema, Table,
         column_type::{ColumnTypeCode, ColumnTypeText, ColumnTypeU16, ColumnTypeU16Array},
         config::KVConfig,
         schema::KVColumnSchema,
@@ -128,7 +128,7 @@ pub fn init_user_tables(db_ctx: &DbCtx) -> CriticalResult<()> {
 
 async fn scan_user_tables(
     db_ctx: &DbCtx,
-) -> CriticalResult<Vec<(KVTableId<'_>, KVTableName<'_>, Box<[u16]>)>> {
+) -> CriticalResult<Vec<(Id<'_>, Name<'_>, Box<[u16]>)>> {
     let argonsys_tables = db_ctx
         .catalog
         .lookup_table_by_name(&SystemTableNames::ARGONSYS_TABLES)
@@ -144,17 +144,17 @@ async fn scan_user_tables(
         .await
         .ok_or_critical_err()?;
 
-    let mut user_tables = Vec::<(KVTableId, KVTableName, Box<[u16]>)>::new();
+    let mut user_tables = Vec::<(Id, Name, Box<[u16]>)>::new();
     while let Some(row) = scan.next_row().await.ok_or_critical_err()? {
         let table_id_str = row
             .column_deserialized::<ColumnTypeText>(ArgonsysTablesColumns::TABLE_ID)
             .ok_or_critical_err()?;
-        let table_id = KVTableId::from_str(&table_id_str).ok_or_critical_err()?;
+        let table_id = Id::from_str(&table_id_str).ok_or_critical_err()?;
 
         let table_name_str = row
             .column_deserialized::<ColumnTypeText>(ArgonsysTablesColumns::TABLE_NAME)
             .ok_or_critical_err()?;
-        let table_name = KVTableName::from_str(&table_name_str).ok_or_critical_err()?;
+        let table_name = Name::from_str(&table_name_str).ok_or_critical_err()?;
 
         let primary_key = row
             .column_deserialized::<ColumnTypeU16Array>(ArgonsysTablesColumns::PRIMARY_KEY)
@@ -168,7 +168,7 @@ async fn scan_user_tables(
 
 async fn scan_user_table_columns(
     db_ctx: &DbCtx,
-    table_id: &KVTableId<'_>,
+    table_id: &Id<'_>,
 ) -> CriticalResult<Vec<(u16, String, ColumnTypeCode)>> {
     let argonsys_columns = db_ctx
         .catalog
@@ -191,7 +191,7 @@ async fn scan_user_table_columns(
         let table_id_str = row
             .column_deserialized::<ColumnTypeText>(ArgonsysColumnsColumns::TABLE_ID)
             .ok_or_critical_err()?;
-        let column_table_id = KVTableId::from_str(&table_id_str).ok_or_critical_err()?;
+        let column_table_id = Id::from_str(&table_id_str).ok_or_critical_err()?;
 
         let column_id = row
             .column_deserialized::<ColumnTypeU16>(ArgonsysColumnsColumns::COLUMN_ID)
@@ -217,8 +217,8 @@ async fn scan_user_table_columns(
 
 pub fn add_table(
     db_ctx: &DbCtx,
-    table_id: &KVTableId,
-    table_name: &KVTableName,
+    table_id: &Id,
+    table_name: &Name,
     table_schema: KVTableSchema,
 ) -> CriticalResult<()> {
     let scan_result = block_on(
@@ -228,7 +228,7 @@ pub fn add_table(
     );
     let sstables = scan_result.ok_or_critical_err()?;
 
-    let table = Arc::new(KVTable::create(
+    let table = Arc::new(Table::create(
         db_ctx.kv_instance.clone(),
         table_id.to_owned(),
         table_name.to_owned(),

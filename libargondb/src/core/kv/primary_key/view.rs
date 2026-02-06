@@ -1,19 +1,19 @@
 use crate::kv::{
     KVRuntimeError,
-    primary_key::{PrimaryKeyData, schema::PrimaryKeySchema},
+    primary_key::{PrimaryKey, schema::Schema},
     value::Value,
 };
 
 pub struct PrimaryKeyView<'a> {
-    schema: &'a PrimaryKeySchema,
-    data: &'a PrimaryKeyData<'a>,
+    schema: &'a Schema,
+    data: &'a PrimaryKey<'a>,
 
     column_index: usize,
     data_offset: usize,
 }
 
 impl<'a> PrimaryKeyView<'a> {
-    pub fn new(schema: &'a PrimaryKeySchema, data: &'a PrimaryKeyData<'a>) -> Self {
+    pub fn new(schema: &'a Schema, data: &'a PrimaryKey<'a>) -> Self {
         let initial_data_offset = schema.column_count() as usize * 2;
 
         Self {
@@ -40,11 +40,11 @@ impl<'a> PrimaryKeyView<'a> {
                 .unwrap(),
         ) as usize;
 
-        let value_type = self.schema.get_column(column_index)?;
+        let type_kind = self.schema.get_column(column_index)?;
         let data = &self.data.0[data_offset..(data_offset + value_size)];
         self.data_offset = data_offset + value_size;
         self.column_index = self.column_index + 1;
 
-        Ok(Some(Value::new(value_type, data)?))
+        Ok(Some(Value::new(data, type_kind)?))
     }
 }

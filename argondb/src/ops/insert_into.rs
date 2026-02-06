@@ -7,7 +7,7 @@ use std::{
 use libargondb::{
     DbCtx,
     kv::{
-        KVColumnValue, KVTable, KVTableName,
+        KVColumnValue, Name, Table,
         mutation::{MutationType, StructuredMutation},
         primary_key::{KVPrimaryKeySchema, PrimaryKeyBuilder},
     },
@@ -29,7 +29,7 @@ pub struct InsertIntoOp {
 impl InsertIntoOp {
     pub async fn execute(&self, db_ctx: &DbCtx) -> Result<(), InsertOpError> {
         let table_name =
-            KVTableName::from_str(&self.table_name).map_err(|_| InsertOpError::InvalidTableName)?;
+            Name::from_str(&self.table_name).map_err(|_| InsertOpError::InvalidTableName)?;
 
         let table = db_ctx
             .catalog
@@ -45,7 +45,7 @@ impl InsertIntoOp {
 
     fn prepare(
         &self,
-        table: &KVTable,
+        table: &Table,
     ) -> Result<(Vec<PreparedColumnValue>, Box<[u8]>), InsertOpError> {
         let mut prepared_values = Vec::<PreparedColumnValue>::new();
 
@@ -109,7 +109,7 @@ impl InsertIntoOp {
         Ok(mutations)
     }
 
-    async fn execute_insertions(&self, table: &Arc<KVTable>, mutations: &Vec<StructuredMutation>) {
+    async fn execute_insertions(&self, table: &Arc<Table>, mutations: &Vec<StructuredMutation>) {
         // TODO: Generally speaking, this code handling table state and getting new state after flush could be handled in a better way
         table.insert_mutations(mutations).await.unwrap();
         // let mut table_state = table.load_state();

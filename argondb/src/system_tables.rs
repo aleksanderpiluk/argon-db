@@ -1,5 +1,5 @@
 use libargondb::kv::{
-    KVTableId, KVTableName, KVTableSchema, column_type::ColumnTypeCode, schema::KVColumnSchema,
+    Id, KVTableSchema, Name, column_type::ColumnTypeCode, schema::KVColumnSchema,
 };
 
 use crate::errors::{CriticalResult, OrCriticalError};
@@ -7,19 +7,17 @@ use crate::errors::{CriticalResult, OrCriticalError};
 pub struct SystemTableNames;
 
 impl SystemTableNames {
-    pub const ARGONSYS_TABLES: KVTableName<'static> =
-        unsafe { KVTableName::from_str_unchecked("_argonsys_tables") };
-    pub const ARGONSYS_COLUMNS: KVTableName<'static> =
-        unsafe { KVTableName::from_str_unchecked("_argonsys_columns") };
+    pub const ARGONSYS_TABLES: Name<'static> =
+        unsafe { Name::from_str_unchecked("_argonsys_tables") };
+    pub const ARGONSYS_COLUMNS: Name<'static> =
+        unsafe { Name::from_str_unchecked("_argonsys_columns") };
 }
 
 pub struct SystemTableIds;
 
 impl SystemTableIds {
-    pub const ARGONSYS_TABLES: KVTableId<'static> =
-        unsafe { KVTableId::from_str_unchecked("_argsys_tbls") };
-    pub const ARGONSYS_COLUMNS: KVTableId<'static> =
-        unsafe { KVTableId::from_str_unchecked("_argsys_cols") };
+    pub const ARGONSYS_TABLES: Id<'static> = unsafe { Id::from_str_unchecked("_argsys_tbls") };
+    pub const ARGONSYS_COLUMNS: Id<'static> = unsafe { Id::from_str_unchecked("_argsys_cols") };
 }
 
 pub struct SystemTableSchemas;

@@ -1,10 +1,10 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use crate::kv::{KVTable, KVTableName};
+use crate::kv::{Table, Name};
 
 pub struct CatalogState {
-    tables: Vec<Arc<KVTable>>,
-    table_name_map: BTreeMap<KVTableName<'static>, Arc<KVTable>>,
+    tables: Vec<Arc<Table>>,
+    table_name_map: BTreeMap<Name<'static>, Arc<Table>>,
 }
 
 impl CatalogState {
@@ -15,7 +15,7 @@ impl CatalogState {
         }
     }
 
-    pub fn add_table(&self, table: Arc<KVTable>) -> Self {
+    pub fn add_table(&self, table: Arc<Table>) -> Self {
         let mut tables = self.tables.clone();
         tables.push(table.clone());
 
@@ -28,11 +28,11 @@ impl CatalogState {
         }
     }
 
-    pub fn list_tables(&self) -> Vec<Arc<KVTable>> {
+    pub fn list_tables(&self) -> Vec<Arc<Table>> {
         self.tables.clone()
     }
 
-    pub fn lookup_table_by_name(&self, table_name: &KVTableName) -> Option<Arc<KVTable>> {
+    pub fn lookup_table_by_name(&self, table_name: &Name) -> Option<Arc<Table>> {
         self.table_name_map
             .get(table_name)
             .map(|table_ref| table_ref.clone())

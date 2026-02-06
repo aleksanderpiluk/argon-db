@@ -13,7 +13,7 @@ use crate::{
     },
     core::persistence::{PersistenceError, PersistenceLayer},
     kv::{
-        KVInstanceStateSnapshot, KVSSTable, KVScannable, KVTableId, ObjectId, schema::KVTableSchema,
+        KVInstanceStateSnapshot, KVSSTable, KVScannable, Id, ObjectId, schema::KVTableSchema,
     },
     persistence::OrPersistenceError,
 };
@@ -102,7 +102,7 @@ impl PersistenceLayer for ArgonFs {
 
     async fn scan_for_sstables(
         &self,
-        table_id: &KVTableId,
+        table_id: &Id,
         table_schema: &KVTableSchema,
     ) -> Result<Vec<Box<dyn KVSSTable>>, PersistenceError> {
         let sstable_refs = self
@@ -129,7 +129,7 @@ impl PersistenceLayer for ArgonFs {
 
     async fn new_file_writer_for_sstable(
         &self,
-        table_id: &KVTableId<'_>,
+        table_id: &Id<'_>,
         sstable_id: ObjectId,
     ) -> Result<Box<dyn Write + Send + Sync + 'static>, PersistenceError> {
         let file_ref = self
@@ -145,7 +145,7 @@ impl PersistenceLayer for ArgonFs {
 
     async fn open_sstable(
         &self,
-        table_id: &KVTableId,
+        table_id: &Id,
         sstable_id: ObjectId,
         table_schema: &KVTableSchema,
     ) -> Result<Box<dyn KVSSTable + 'static>, PersistenceError> {
@@ -169,7 +169,7 @@ impl PersistenceLayer for ArgonFs {
 
     async fn remove_compacted_sstables(
         &self,
-        table_id: &KVTableId,
+        table_id: &Id,
         sstable_ids: Vec<ObjectId>,
     ) -> Result<(), PersistenceError> {
         for sstable_id in sstable_ids {

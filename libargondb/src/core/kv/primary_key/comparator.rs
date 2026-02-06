@@ -1,22 +1,22 @@
 use std::cmp::Ordering;
 
 use crate::kv::{
-    core::Comparator,
-    primary_key::{PrimaryKeyData, schema::PrimaryKeySchema, view::PrimaryKeyView},
+    base::Comparator,
+    primary_key::{PrimaryKey, schema::Schema, view::PrimaryKeyView},
 };
 
 struct PrimaryKeyComparator<'a> {
-    schema: &'a PrimaryKeySchema,
+    schema: &'a Schema,
 }
 
 impl<'a> PrimaryKeyComparator<'a> {
-    fn new(schema: &'a PrimaryKeySchema) -> Self {
+    fn new(schema: &'a Schema) -> Self {
         Self { schema }
     }
 }
 
-impl Comparator<(), PrimaryKeyData<'_>> for PrimaryKeyComparator<'_> {
-    fn cmp(&self, l: &PrimaryKeyData, r: &PrimaryKeyData) -> Result<std::cmp::Ordering, ()> {
+impl Comparator<(), PrimaryKey<'_>> for PrimaryKeyComparator<'_> {
+    fn cmp(&self, l: &PrimaryKey, r: &PrimaryKey) -> Result<std::cmp::Ordering, ()> {
         let mut l_view = PrimaryKeyView::new(self.schema, l);
         let mut r_view = PrimaryKeyView::new(self.schema, r);
 
@@ -45,7 +45,7 @@ impl Comparator<(), PrimaryKeyData<'_>> for PrimaryKeyComparator<'_> {
         Ok(Ordering::Equal)
     }
 
-    fn eq(&self, this: &PrimaryKeyData, that: &PrimaryKeyData) -> Result<bool, ()> {
+    fn eq(&self, l: &PrimaryKey, r: &PrimaryKey) -> Result<bool, ()> {
         let mut l_view = PrimaryKeyView::new(self.schema, l);
         let mut r_view = PrimaryKeyView::new(self.schema, r);
 

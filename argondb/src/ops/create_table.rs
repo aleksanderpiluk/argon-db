@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, str::FromStr, sync::Arc, vec};
 use libargondb::{
     DbCtx,
     kv::{
-        KVColumnValueBuilder, KVTable, KVTableId, KVTableName, KVTableSchema,
+        KVColumnValueBuilder, Table, Id, Name, KVTableSchema,
         column_type::ColumnTypeCode, schema::KVColumnSchema,
     },
 };
@@ -30,8 +30,8 @@ pub struct CreateTableOp {
 }
 
 impl CreateTableOp {
-    pub async fn execute(&self, db_ctx: &DbCtx) -> Result<Arc<KVTable>, CreateTableOpError> {
-        let table_name = KVTableName::from_str(&self.table_name)
+    pub async fn execute(&self, db_ctx: &DbCtx) -> Result<Arc<Table>, CreateTableOpError> {
+        let table_name = Name::from_str(&self.table_name)
             .map_err(|_| CreateTableOpError::InvalidTableName)?;
 
         if !(self.columns.len() < u16::MAX as usize) {
@@ -74,9 +74,9 @@ impl CreateTableOp {
         let table_schema = KVTableSchema::build(columns.clone(), primary_key.clone())
             .map_err(|_| CreateTableOpError::SchemaError)?;
 
-        let table_id = KVTableId::new_unique();
+        let table_id = Id::new_unique();
 
-        let table = Arc::new(KVTable::create(
+        let table = Arc::new(Table::create(
             db_ctx.kv_instance.clone(),
             table_id.clone(),
             table_name.clone(),

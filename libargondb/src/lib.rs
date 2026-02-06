@@ -1,5 +1,6 @@
 #![warn(clippy::pedantic)]
 mod argonfs;
+mod base;
 mod catalog;
 mod connector;
 mod core;

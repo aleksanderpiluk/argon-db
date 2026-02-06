@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::{
     argonfs::local_fs::FsFileSystemConfig,
-    kv::{KVTableId, ObjectId},
+    kv::{Id, ObjectId},
 };
 
 pub struct FsPathFactory {
@@ -24,11 +24,11 @@ impl FsPathFactory {
         &self.tables_root
     }
 
-    pub fn table_dir(&self, table_id: &KVTableId) -> PathBuf {
+    pub fn table_dir(&self, table_id: &Id) -> PathBuf {
         self.tables_root.join(table_id.as_ref())
     }
 
-    pub fn sstable_file(&self, table_id: &KVTableId, sstable_id: ObjectId) -> PathBuf {
+    pub fn sstable_file(&self, table_id: &Id, sstable_id: ObjectId) -> PathBuf {
         self.table_dir(table_id)
             .join(format!("{}.argonfile", sstable_id.0))
     }

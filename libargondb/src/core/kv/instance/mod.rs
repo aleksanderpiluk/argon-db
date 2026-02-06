@@ -1,15 +1,21 @@
+mod state;
+
 use flume::{Receiver, Sender};
 use std::sync::Arc;
 
 use crate::{
     kv::{
-        KVRuntimeError, KVRuntimeErrorKind, KVTable, ObjectId,
+        KVRuntimeError, KVRuntimeErrorKind, ObjectId, Table,
         config::KVConfig,
         memtable::{KVMemtableFlushRequest, Memtable},
         object_id::ObjectIdGenerator,
     },
     utils::rcu::RCU,
 };
+
+pub struct Instance {}
+
+impl Instance {}
 
 #[derive(Debug)]
 pub struct KVInstance {
@@ -29,20 +35,20 @@ impl KVInstance {
         }
     }
 
-    pub fn request_memtable_flush(&self, memtable: Arc<Memtable>) -> Result<(), KVRuntimeError> {
-        let state = self.state.load();
+    // pub fn request_memtable_flush(&self, memtable: Arc<Memtable>) -> Result<(), KVRuntimeError> {
+    //     let state = self.state.load();
 
-        if let Some(sender) = state.memtable_flush_queue().sender() {
-            sender.send(KVMemtableFlushRequest { memtable }).unwrap();
+    //     if let Some(sender) = state.memtable_flush_queue().sender() {
+    //         sender.send(KVMemtableFlushRequest { memtable }).unwrap();
 
-            Ok(())
-        } else {
-            Err(KVRuntimeError::with_msg(
-                KVRuntimeErrorKind::OperationNotAllowed,
-                "request memtable flush failed - no sender",
-            ))
-        }
-    }
+    //         Ok(())
+    //     } else {
+    //         Err(KVRuntimeError::with_msg(
+    //             KVRuntimeErrorKind::OperationNotAllowed,
+    //             "request memtable flush failed - no sender",
+    //         ))
+    //     }
+    // }
 
     pub fn get_memtable_flush_queue_iter(&self) -> impl Iterator<Item = KVMemtableFlushRequest> {
         let state = self.state.load();
@@ -51,7 +57,7 @@ impl KVInstance {
         Receiver::into_iter(receiver)
     }
 
-    pub fn new_memtable(&self, table: Arc<KVTable>) -> Arc<Memtable> {
+    pub fn new_memtable(&self, table: Arc<Table>) -> Arc<Memtable> {
         let object_id = self.object_id_generator.next();
         let memtable_size = self.config.memtable_size;
 
@@ -95,60 +101,6 @@ impl KVInstance {
 
     pub fn generate_compacted_sstable_id(&self) -> ObjectId {
         self.object_id_generator.next()
-    }
-}
-
-#[derive(Debug, Clone)]
-enum MemtableFlushQueue {
-    Active {
-        sender: Sender<KVMemtableFlushRequest>,
-        receiver: Receiver<KVMemtableFlushRequest>,
-    },
-    Closed {
-        receiver: Receiver<KVMemtableFlushRequest>,
-    },
-}
-
-impl MemtableFlushQueue {
-    fn new() -> Self {
-        let (sender, receiver) = flume::unbounded();
-
-        Self::Active { sender, receiver }
-    }
-
-    fn close(&mut self) {
-        let Self::Active {
-            sender: _,
-            receiver,
-        } = self
-        else {
-            println!("memtable flush queue already closed");
-            return;
-        };
-
-        *self = Self::Closed {
-            receiver: receiver.clone(),
-        };
-    }
-
-    fn receiver(&self) -> &Receiver<KVMemtableFlushRequest> {
-        match self {
-            Self::Active {
-                sender: _,
-                receiver,
-            } => receiver,
-            Self::Closed { receiver } => receiver,
-        }
-    }
-
-    fn sender(&self) -> Option<&Sender<KVMemtableFlushRequest>> {
-        match self {
-            Self::Active {
-                sender,
-                receiver: _,
-            } => Some(sender),
-            Self::Closed { receiver: _ } => None,
-        }
     }
 }
 

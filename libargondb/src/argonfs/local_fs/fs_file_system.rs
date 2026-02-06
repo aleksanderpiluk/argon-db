@@ -8,7 +8,7 @@ use crate::{
         fs::{BoxFileRef, FileSystem, FileSystemError},
         local_fs::{FsFileSystemConfig, fs_file_ref::FsFileRef, fs_path_factory::FsPathFactory},
     },
-    kv::{KVTableId, KVTableSchema, ObjectId},
+    kv::{Id, KVTableSchema, ObjectId},
 };
 
 pub struct FsFileSystem {
@@ -31,7 +31,7 @@ impl FsFileSystem {
 impl FileSystem for FsFileSystem {
     async fn scan_table_catalog(
         &self,
-        table_id: &KVTableId,
+        table_id: &Id,
         table_schema: &KVTableSchema,
     ) -> Result<Vec<BoxFileRef>, FileSystemError> {
         let table_dir = self.ctx.path_factory.table_dir(table_id);
@@ -56,7 +56,7 @@ impl FileSystem for FsFileSystem {
 
     async fn get_sstable_file_ref(
         &self,
-        table_id: &KVTableId,
+        table_id: &Id,
         sstable_id: ObjectId,
     ) -> Result<BoxFileRef, FileSystemError> {
         let file_path = self.ctx.path_factory.sstable_file(table_id, sstable_id);

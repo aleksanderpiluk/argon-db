@@ -17,7 +17,7 @@ use libargondb::{
     ConnectorError, ConnectorHandle, DbCtx,
     kv::{
         KVColumnFilter, KVColumnValue, KVColumnValueBuilder, KVPrimaryKeyMarker, KVRangeScan,
-        KVRow, KVRowScan, KVTable, KVTableName, KVTableSchema,
+        KVRow, KVRowScan, KVTableSchema, Name, Table,
         column_type::{
             ColumnTypeBytes, ColumnTypeCode, ColumnTypeText, ColumnTypeU16, ColumnTypeU16Array,
         },
@@ -208,7 +208,7 @@ impl argondb_service_definition::argon_db_server::ArgonDb for ArgonDbHandlers {
     ) -> Result<Response<ScanTableResponse>, Status> {
         let req = request.get_ref();
 
-        let table_name = KVTableName::from_str(&req.table_name)
+        let table_name = Name::from_str(&req.table_name)
             .map_err(|_| Status::invalid_argument("invalid table name"))?;
 
         let table = self
@@ -295,7 +295,7 @@ impl argondb_service_definition::argon_db_server::ArgonDb for ArgonDbHandlers {
     ) -> Result<Response<InsertMutationsResponse>, Status> {
         let req = request.get_ref();
 
-        let table_name = KVTableName::from_str(&req.table_name)
+        let table_name = Name::from_str(&req.table_name)
             .map_err(|_| Status::invalid_argument("invalid table name"))?;
 
         let table = self
@@ -338,7 +338,7 @@ impl argondb_service_definition::argon_db_server::ArgonDb for ArgonDbHandlers {
     ) -> Result<Response<ReadRowResponse>, Status> {
         let req = request.get_ref();
 
-        let table_name = KVTableName::from_str(&req.table_name)
+        let table_name = Name::from_str(&req.table_name)
             .map_err(|_| Status::invalid_argument("invalid table name"))?;
 
         let table = self

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use super::catalog_state::CatalogState;
 use crate::{
-    kv::{KVTable, KVTableName},
+    kv::{Table, Name},
     utils::rcu::RCU,
 };
 
@@ -17,7 +17,7 @@ impl Catalog {
         }
     }
 
-    pub fn add_table(&self, table: Arc<KVTable>) {
+    pub fn add_table(&self, table: Arc<Table>) {
         self.state.mutate_blocking(move |current_state| {
             let new_state = current_state.add_table(table);
 
@@ -25,13 +25,13 @@ impl Catalog {
         });
     }
 
-    pub fn lookup_table_by_name(&self, table_name: &KVTableName) -> Option<Arc<KVTable>> {
+    pub fn lookup_table_by_name(&self, table_name: &Name) -> Option<Arc<Table>> {
         let catalog_state = self.state.load();
 
         catalog_state.lookup_table_by_name(table_name)
     }
 
-    pub fn list_tables(&self) -> Vec<Arc<KVTable>> {
+    pub fn list_tables(&self) -> Vec<Arc<Table>> {
         let catalog_state = self.state.load();
 
         catalog_state.list_tables()

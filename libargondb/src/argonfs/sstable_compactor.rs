@@ -12,7 +12,7 @@ use crate::{
     argonfile::ArgonfileBuilder,
     kv::{
         KVColumnFilter, KVFlushPreStats, KVMergeScanIter, KVPrimaryKeyMarker, KVRangeScan,
-        KVRangeScanResult, KVSSTable, KVTable, ShadowingIter, primary_key::KVPrimaryKeySchema,
+        KVRangeScanResult, KVSSTable, Table, ShadowingIter, primary_key::KVPrimaryKeySchema,
     },
 };
 
@@ -84,7 +84,7 @@ fn scan_tables_for_compaction(db_ctx: &Arc<DbCtx>) {
 async fn compact_sstables(
     db_ctx: &Arc<DbCtx>,
     new_level: u64,
-    table: Arc<KVTable>,
+    table: Arc<Table>,
     sstables: Vec<Arc<Box<dyn KVSSTable>>>,
 ) {
     let pk_schema = KVPrimaryKeySchema::from_table_schema(&table.table_schema);

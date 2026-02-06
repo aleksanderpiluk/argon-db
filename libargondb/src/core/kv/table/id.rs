@@ -3,15 +3,15 @@ use std::{borrow::Cow, fmt::Display, str::FromStr};
 use rand::distr::{Alphabetic, SampleString};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct KVTableId<'a>(Cow<'a, str>);
+pub struct Id<'a>(Cow<'a, str>);
 
-impl AsRef<str> for KVTableId<'_> {
+impl AsRef<str> for Id<'_> {
     fn as_ref(&self) -> &str {
         &self.0
     }
 }
 
-impl KVTableId<'static> {
+impl Id<'static> {
     pub const unsafe fn from_str_unchecked(s: &'static str) -> Self {
         Self(Cow::Borrowed(s))
     }
@@ -25,11 +25,11 @@ impl KVTableId<'static> {
     }
 }
 
-impl KVTableId<'_> {
-    pub fn to_owned(&self) -> KVTableId<'static> {
+impl Id<'_> {
+    pub fn to_owned(&self) -> Id<'static> {
         let s = self.0.to_string();
 
-        KVTableId(Cow::Owned(s))
+        Id(Cow::Owned(s))
     }
 
     pub fn to_string(&self) -> String {
@@ -37,7 +37,7 @@ impl KVTableId<'_> {
     }
 }
 
-impl FromStr for KVTableId<'_> {
+impl FromStr for Id<'_> {
     type Err = KVTableIdConversionError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {

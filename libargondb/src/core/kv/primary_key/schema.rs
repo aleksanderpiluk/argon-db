@@ -1,11 +1,11 @@
-use crate::kv::value_type::ValueTypeId;
+use super::super::value;
 
-pub struct PrimaryKeySchema(Vec<ValueTypeId>);
+pub struct Schema(Vec<value::TypeKind>);
 
-impl PrimaryKeySchema {
+impl Schema {
     const MAX_COLUMNS_IN_PRIMARY_KEY: u8 = 128;
 
-    pub fn new(columns: Vec<ValueTypeId>) -> Result<Self, ()> {
+    pub fn new(columns: Vec<value::TypeKind>) -> Result<Self, ()> {
         if columns.len() > Self::MAX_COLUMNS_IN_PRIMARY_KEY as usize {
             return Err(());
         }
@@ -19,7 +19,7 @@ impl PrimaryKeySchema {
         self.0.len() as u8
     }
 
-    pub fn get_column(&self, column_index: usize) -> Result<ValueTypeId, ()> {
+    pub fn get_column(&self, column_index: usize) -> Result<value::TypeKind, ()> {
         debug_assert!(self.0.len() <= Self::MAX_COLUMNS_IN_PRIMARY_KEY as usize);
 
         if column_index <= self.0.len() {
