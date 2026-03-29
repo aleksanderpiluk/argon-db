@@ -5,12 +5,12 @@ use crate::kv::{
     primary_key::{PrimaryKey, schema::Schema, view::PrimaryKeyView},
 };
 
-struct PrimaryKeyComparator<'a> {
+pub struct PrimaryKeyComparator<'a> {
     schema: &'a Schema,
 }
 
 impl<'a> PrimaryKeyComparator<'a> {
-    fn new(schema: &'a Schema) -> Self {
+    pub fn new(schema: &'a Schema) -> Self {
         Self { schema }
     }
 }

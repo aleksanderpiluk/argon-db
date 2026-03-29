@@ -2,6 +2,11 @@ mod flush_pre_stats;
 mod lock;
 mod mutation;
 mod skip_list;
+mod skiplist_ng;
+
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+use crate::kv::{mutation::Mutation, primary_key};
 
 use super::scannable;
 use async_trait::async_trait;
@@ -10,11 +15,64 @@ pub use flush_pre_stats::KVFlushPreStats;
 pub use mutation::MemtableMutation;
 
 pub struct Memtable {
-    inner: skip_list::SkipList,
+    inner: skiplist_ng::Skiplist,
     lock: lock::MemtableLock,
     object_id: super::ObjectId,
     size: std::sync::atomic::AtomicUsize,
     size_limit: usize,
+}
+
+impl Memtable {
+    pub fn new(object_id: super::ObjectId, schema: primary_key::Schema, size_limit: usize) -> Self {
+        Self {
+            inner: skiplist_ng::Skiplist::new(schema),
+            lock: lock::MemtableLock::new(),
+            object_id,
+            size: AtomicUsize::new(0),
+            size_limit,
+        }
+    }
+
+    pub fn insert_mutation(&self, mutation: &impl Mutation) -> Result<(), ()> {
+        self.lock
+            .obtain_write_access()
+            .map_err(|_| MemtableInsertError::ReadOnlyMode)?;
+
+        let mutation_size = mutation.size();
+
+        loop {
+            let memtable_size = self.size.load(Ordering::Relaxed);
+            let new_memtable_size = memtable_size + mutation_size;
+
+            if new_memtable_size > self.size_limit {
+                self.lock.enable_read_only_mode();
+                self.lock.release_write_access();
+                return Err(MemtableInsertError::SizeExceeded);
+            }
+
+            if let Ok(_) = self.size.compare_exchange(
+                memtable_size,
+                new_memtable_size,
+                Ordering::Acquire,
+                Ordering::Relaxed,
+            ) {
+                self.inner.insert(MemtableMutation {
+                    primary_key_schema: self.primary_key_schema.clone(),
+                    mutation: mutation.clone(),
+                });
+
+                self.lock.release_write_access();
+
+                #[cfg(debug_assertions)]
+                println!(
+                    "[Memtable id: {}] inserted mutation {}",
+                    self.object_id,
+                    MutationUtils::debug_fmt(&self.table.table_schema, mutation).unwrap()
+                );
+                return Ok(());
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -42,21 +100,6 @@ impl scannable::Scannable for Memtable {
 // }
 
 // impl Memtable {
-//     pub fn new(object_id: ObjectId, table: Arc<Table>, size_limit: usize) -> Self {
-//         let primary_key_schema =
-//             Arc::new(KVPrimaryKeySchema::from_table_schema(&table.table_schema));
-
-//         Self {
-//             object_id,
-//             table,
-//             primary_key_schema,
-//             inner: SkipSet::new(),
-//             size_limit,
-//             size: AtomicUsize::new(0),
-//             lock: MemtableLock::new(),
-//         }
-//     }
-
 //     pub fn table(&self) -> &Arc<Table> {
 //         &self.table
 //     }
@@ -71,44 +114,6 @@ impl scannable::Scannable for Memtable {
 //     ) -> Result<(), MemtableInsertError> {
 //         assert!(!MutationUtils::is_marker(mutation));
 
-//         self.lock
-//             .obtain_write_access()
-//             .map_err(|_| MemtableInsertError::ReadOnlyMode)?;
-
-//         let mutation_size = mutation.size();
-
-//         loop {
-//             let memtable_size = self.size.load(Ordering::Acquire);
-//             let new_memtable_size = memtable_size + mutation_size;
-
-//             if new_memtable_size > self.size_limit {
-//                 self.lock.enable_read_only_mode();
-//                 self.lock.release_write_access();
-//                 return Err(MemtableInsertError::SizeExceeded);
-//             }
-
-//             if let Ok(_) = self.size.compare_exchange(
-//                 memtable_size,
-//                 new_memtable_size,
-//                 Ordering::Acquire,
-//                 Ordering::Relaxed,
-//             ) {
-//                 self.inner.insert(MemtableMutation {
-//                     primary_key_schema: self.primary_key_schema.clone(),
-//                     mutation: mutation.clone(),
-//                 });
-
-//                 self.lock.release_write_access();
-
-//                 #[cfg(debug_assertions)]
-//                 println!(
-//                     "[Memtable id: {}] inserted mutation {}",
-//                     self.object_id,
-//                     MutationUtils::debug_fmt(&self.table.table_schema, mutation).unwrap()
-//                 );
-//                 return Ok(());
-//             }
-//         }
 //     }
 
 //     pub fn is_flush_needed(&self) -> bool {

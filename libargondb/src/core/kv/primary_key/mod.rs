@@ -3,6 +3,7 @@ mod comparator;
 mod schema;
 mod view;
 
+pub use comparator::PrimaryKeyComparator;
 pub use schema::Schema;
 
 pub struct PrimaryKey<'a>(std::borrow::Cow<'a, [u8]>);

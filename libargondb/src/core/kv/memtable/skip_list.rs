@@ -57,7 +57,7 @@ impl std::borrow::Borrow<scannable::RangeScanMarker> for SkipListMutation {
 
 pub struct ScanIter<'a> {}
 
-impl ScanIter<'a> {
+impl<'a> ScanIter<'a> {
     pub fn for_range_scan(skip_list: &'a SkipList, params: scannable::RangeScanParams) -> Self {
         todo!()
     }
