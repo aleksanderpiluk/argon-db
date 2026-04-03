@@ -241,3 +241,54 @@ pub fn add_table(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::ops::{CreateTableOp, CreateTableOpColumn};
+
+    use super::*;
+
+    #[test]
+    pub fn test_skiplist_columns() {
+        let db_ctx = init_db_ctx().unwrap();
+        println!("init thread - database context initialized");
+
+        init_system_tables(&db_ctx).unwrap();
+        println!("init thread - system tables initialized");
+
+        block_on(
+            CreateTableOp {
+                table_name: "xeergrdhnrrkwjrvxwha".to_string(),
+                columns: vec![
+                    CreateTableOpColumn {
+                        column_name: "id".to_string(),
+                        column_type: ColumnTypeCode::Text,
+                    },
+                    CreateTableOpColumn {
+                        column_name: "value".to_string(),
+                        column_type: ColumnTypeCode::U16,
+                    },
+                ],
+                primary_key: vec!["id".to_string()],
+            }
+            .execute(&db_ctx),
+        )
+        .unwrap();
+
+        let table_argonsys_columns = db_ctx
+            .catalog
+            .lookup_table_by_name(&SystemTableNames::ARGONSYS_COLUMNS)
+            .unwrap();
+
+        let mut iter = block_on(table_argonsys_columns.scan(KVRangeScan::new(
+            table_argonsys_columns.table_schema.clone(),
+            KVPrimaryKeyMarker::Start,
+            KVPrimaryKeyMarker::End,
+            KVColumnFilter::All,
+        )))
+        .unwrap();
+
+        dbg!(block_on(iter.next_row()).unwrap());
+        dbg!(block_on(iter.next_row()).unwrap());
+    }
+}

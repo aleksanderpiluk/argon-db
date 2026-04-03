@@ -7,7 +7,6 @@ use crate::{
         schema::KVTableSchema,
     },
 };
-use bytemuck::{bytes_of, from_bytes};
 use std::cmp::Ordering;
 
 /// Stores schema of primary key  
@@ -85,7 +84,8 @@ impl<'a> PrimaryKeyView<'a> {
 
         if column_idx < self.schema.column_count() as usize {
             let size_ptr = 2 * column_idx;
-            let value_size = *from_bytes::<u16>(&self.key[size_ptr..(size_ptr + 2)]) as usize;
+            let value_size =
+                u16::from_le_bytes(self.key[size_ptr..(size_ptr + 2)].try_into().unwrap()) as usize;
 
             let col_type = self.schema.column_type(column_idx)?;
             let col_value = &self.key[value_ptr..(value_ptr + value_size)];
@@ -184,7 +184,8 @@ impl<'a> PrimaryKeyBuilder<'a> {
         let column_idx = self.column_idx as usize;
         self.column_idx += 1;
 
-        self.data[(2 * column_idx)..(2 * (column_idx + 1))].copy_from_slice(bytes_of(&value_size));
+        self.data[(2 * column_idx)..(2 * (column_idx + 1))]
+            .copy_from_slice(&u16::to_le_bytes(value_size));
 
         self.data.extend_from_slice(value);
     }

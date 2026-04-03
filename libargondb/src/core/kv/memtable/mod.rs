@@ -1,25 +1,28 @@
 mod flush_pre_stats;
 mod flush_request;
 mod lock;
+mod mutation;
+mod skiplist;
 
 pub use flush_pre_stats::KVFlushPreStats;
 pub use flush_request::KVMemtableFlushRequest;
 
 use crate::kv::{
-    KVColumnFilter, KVRangeScanResult, KVRuntimeErrorKind, KVSSTableBuilder, KVScanIterator,
-    KVScanIteratorItem, KVTable,
+    KVColumnFilter, KVPrimaryKeyMarker, KVRangeScanResult, KVRuntimeErrorKind, KVSSTableBuilder,
+    KVScanIterator, KVScanIteratorItem, KVTable,
     error::KVRuntimeError,
     iter::PrintIter,
     memtable::lock::MemtableLock,
     mutation::{KVMutation, MutationComparator, MutationUtils, StructuredMutation},
     object_id::ObjectId,
-    primary_key::{KVPrimaryKeyMarker, KVPrimaryKeySchema},
+    primary_key::KVPrimaryKeySchema,
     scan::{KVRangeScan, KVScannable},
 };
 use async_trait::async_trait;
-use crossbeam_skiplist::{SkipSet, set::Entry};
+use skiplist::{Entry, Skiplist};
 use std::{
     mem::replace,
+    ops::Deref,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -30,8 +33,7 @@ use std::{
 pub struct Memtable {
     pub object_id: ObjectId,
     table: Arc<KVTable>,
-    primary_key_schema: Arc<KVPrimaryKeySchema>,
-    inner: SkipSet<MemtableMutation>,
+    inner: Skiplist,
     size_limit: usize,
     size: AtomicUsize,
     lock: MemtableLock,
@@ -39,14 +41,12 @@ pub struct Memtable {
 
 impl Memtable {
     pub fn new(object_id: ObjectId, table: Arc<KVTable>, size_limit: usize) -> Self {
-        let primary_key_schema =
-            Arc::new(KVPrimaryKeySchema::from_table_schema(&table.table_schema));
+        let primary_key_schema = KVPrimaryKeySchema::from_table_schema(&table.table_schema);
 
         Self {
             object_id,
             table,
-            primary_key_schema,
-            inner: SkipSet::new(),
+            inner: Skiplist::new(primary_key_schema),
             size_limit,
             size: AtomicUsize::new(0),
             lock: MemtableLock::new(),
@@ -89,10 +89,7 @@ impl Memtable {
                 Ordering::Acquire,
                 Ordering::Relaxed,
             ) {
-                self.inner.insert(MemtableMutation {
-                    primary_key_schema: self.primary_key_schema.clone(),
-                    mutation: mutation.clone(),
-                });
+                self.inner.insert(mutation.clone());
 
                 self.lock.release_write_access();
 
@@ -128,24 +125,17 @@ impl Memtable {
 
         match (from, to) {
             (KVPrimaryKeyMarker::Start, KVPrimaryKeyMarker::End) => {
-                Ok(Box::new(self.inner.range(..).into_iter()))
+                Ok(Box::new(self.inner.range(None, None).into_iter()))
             }
             (KVPrimaryKeyMarker::Start, KVPrimaryKeyMarker::Key(pk)) => Ok(Box::new(
-                self.inner
-                    .range(..MemtableMutation::end(self.primary_key_schema.clone(), pk.clone()))
-                    .into_iter(),
+                self.inner.range(None, Some(pk.clone())).into_iter(),
             )),
             (KVPrimaryKeyMarker::Key(pk), KVPrimaryKeyMarker::End) => Ok(Box::new(
-                self.inner
-                    .range(MemtableMutation::start(self.primary_key_schema.clone(), pk.clone())..)
-                    .into_iter(),
+                self.inner.range(Some(pk.clone()), None).into_iter(),
             )),
             (KVPrimaryKeyMarker::Key(pk_from), KVPrimaryKeyMarker::Key(pk_to)) => Ok(Box::new(
                 self.inner
-                    .range(
-                        MemtableMutation::start(self.primary_key_schema.clone(), pk_from.clone())
-                            ..MemtableMutation::end(self.primary_key_schema.clone(), pk_to.clone()),
-                    )
+                    .range(Some(pk_from.clone()), Some(pk_to.clone()))
                     .into_iter(),
             )),
             _ => {
@@ -226,7 +216,7 @@ impl std::fmt::Display for Memtable {
 #[async_trait]
 impl KVScannable for Memtable {
     async fn range_scan(&self, scan: &KVRangeScan) -> Result<KVRangeScanResult, KVRuntimeError> {
-        let iter: Box<dyn Iterator<Item = Entry<'_, MemtableMutation>> + Send + Sync> =
+        let iter: Box<dyn Iterator<Item = Entry<'_>> + Send + Sync> =
             self.get_range_iterator(scan)?;
         Ok(KVRangeScanResult::Iter(Box::new(PrintIter::new(
             format!("Memtable id={}", self.object_id),
@@ -256,64 +246,7 @@ pub enum MemtableInsertError {
     SizeExceeded,
 }
 
-#[derive(Debug)]
-struct MemtableMutation {
-    primary_key_schema: Arc<KVPrimaryKeySchema>,
-    mutation: StructuredMutation,
-}
-
-impl MemtableMutation {
-    fn start(primary_key_schema: Arc<KVPrimaryKeySchema>, primary_key: Box<[u8]>) -> Self {
-        Self {
-            primary_key_schema,
-            mutation: StructuredMutation::start(primary_key).unwrap(),
-        }
-    }
-
-    fn end(primary_key_schema: Arc<KVPrimaryKeySchema>, primary_key: Box<[u8]>) -> Self {
-        Self {
-            primary_key_schema,
-            mutation: StructuredMutation::end(primary_key).unwrap(),
-        }
-    }
-
-    fn as_mutation(&self) -> &dyn KVMutation {
-        &self.mutation
-    }
-}
-
-impl Eq for MemtableMutation {}
-
-impl PartialEq for MemtableMutation {
-    fn eq(&self, other: &Self) -> bool {
-        assert!(Arc::ptr_eq(
-            &self.primary_key_schema,
-            &other.primary_key_schema
-        ));
-
-        MutationComparator::eq(&self.primary_key_schema, &self.mutation, &other.mutation).unwrap()
-    }
-}
-
-impl Ord for MemtableMutation {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        assert!(Arc::ptr_eq(
-            &self.primary_key_schema,
-            &other.primary_key_schema
-        ));
-
-        MutationComparator::cmp(&self.primary_key_schema, &self.mutation, &other.mutation).unwrap()
-    }
-}
-
-impl PartialOrd for MemtableMutation {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-type MemtableScanResultsIterInner<'a> =
-    Box<dyn Iterator<Item = Entry<'a, MemtableMutation>> + Send + Sync + 'a>;
+type MemtableScanResultsIterInner<'a> = Box<dyn Iterator<Item = Entry<'a>> + Send + Sync + 'a>;
 
 struct MemtableScanResultsIter {
     // mutations: Vec<Box<dyn KVScanIteratorItem + Send + Sync>>,
@@ -327,7 +260,7 @@ impl MemtableScanResultsIter {
 
         for entry in iter {
             mutations.push(Box::new(MemtableScanResultsIterItem {
-                mutation: entry.mutation.clone(),
+                mutation: entry.deref().clone(),
             }));
         }
 
