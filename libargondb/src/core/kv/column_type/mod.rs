@@ -61,13 +61,18 @@ impl TryFrom<u8> for ColumnTypeCode {
     }
 }
 
+static COLUMN_TYPE_BYTES: ColumnTypeBytes = ColumnTypeBytes;
+static COLUMN_TYPE_TEXT: ColumnTypeText = ColumnTypeText;
+static COLUMN_TYPE_U16: ColumnTypeU16 = ColumnTypeU16;
+static COLUMN_TYPE_U16ARR: ColumnTypeU16Array = ColumnTypeU16Array;
+
 impl ColumnTypeCode {
-    pub fn type_for_code(code: u8) -> Result<Box<dyn ColumnType>, KVRuntimeError> {
+    pub fn type_for_code(code: u8) -> Result<&'static dyn ColumnType, KVRuntimeError> {
         match code {
-            1 => Ok(Box::new(ColumnTypeBytes)),
-            2 => Ok(Box::new(ColumnTypeText)),
-            3 => Ok(Box::new(ColumnTypeU16)),
-            4 => Ok(Box::new(ColumnTypeU16Array)),
+            1 => Ok(&COLUMN_TYPE_BYTES),
+            2 => Ok(&COLUMN_TYPE_TEXT),
+            3 => Ok(&COLUMN_TYPE_U16),
+            4 => Ok(&COLUMN_TYPE_U16ARR),
             _ => Err(KVRuntimeError::with_msg(
                 KVRuntimeErrorKind::DataMalformed,
                 format!(

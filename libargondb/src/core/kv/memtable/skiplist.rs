@@ -3,7 +3,6 @@ use std::{
     cmp,
     fmt::Debug,
     marker::PhantomData,
-    mem::swap,
     ops::{Bound, Deref, Index},
     ptr::{self, NonNull},
     sync::atomic::{self, AtomicUsize, Ordering},
@@ -27,11 +26,15 @@ const HEIGHT_MASK: usize = (1 << HEIGHT_BITS) - 1;
 
 const DELETE_MARK_TAG: usize = 1;
 
+struct HotData {
+    height: AtomicUsize,
+    len: AtomicUsize,
+    rng_state: AtomicUsize,
+}
+
 pub struct Skiplist {
     schema: KVPrimaryKeySchema,
-    height: CachePadded<AtomicUsize>,
-    len: CachePadded<AtomicUsize>,
-    rng_state: CachePadded<AtomicUsize>,
+    hot_data: CachePadded<HotData>,
     head: Head,
 }
 
@@ -74,9 +77,11 @@ impl Skiplist {
     pub fn new(schema: KVPrimaryKeySchema) -> Self {
         Self {
             schema,
-            height: CachePadded::new(AtomicUsize::new(0)),
-            len: CachePadded::new(AtomicUsize::new(0)),
-            rng_state: CachePadded::new(AtomicUsize::new(0)),
+            hot_data: CachePadded::new(HotData {
+                height: AtomicUsize::new(0),
+                len: AtomicUsize::new(0),
+                rng_state: AtomicUsize::new(0),
+            }),
             head: Head::new(),
         }
     }
@@ -89,7 +94,7 @@ impl Skiplist {
         let guard = &pin();
         let mut search_result = self.search_node(&node_ref.data, guard);
 
-        self.len.fetch_add(1, Ordering::Relaxed);
+        self.hot_data.len.fetch_add(1, Ordering::Relaxed);
 
         loop {
             node_ref.tower[0].store(search_result.right[0], Ordering::Relaxed);
@@ -107,7 +112,7 @@ impl Skiplist {
                 // Node successfully added to level 0 list
                 if let Some(old_node) = search_result.found_node {
                     if old_node.mark_tower(guard) {
-                        self.len.fetch_sub(1, Ordering::Relaxed);
+                        self.hot_data.len.fetch_sub(1, Ordering::Relaxed);
                     }
                 }
                 break;
@@ -196,7 +201,7 @@ impl Skiplist {
     }
 
     pub fn len(&self) -> usize {
-        self.len.load(Ordering::Relaxed)
+        self.hot_data.len.load(Ordering::Relaxed)
     }
 
     fn search_node<'a>(
@@ -213,7 +218,9 @@ impl Skiplist {
 
             let mut left: TowerRef<'a> = self.head.as_tower();
 
-            for level in (0..(MAX_HEIGHT - 1)).rev() {
+            let current_max_height = usize::max(1, self.hot_data.height.load(Ordering::Relaxed));
+
+            for level in (0..(current_max_height)).rev() {
                 // Height indexes are 0 based
                 let left_next = left[level].load(Ordering::Acquire, guard);
 
@@ -281,29 +288,24 @@ impl Skiplist {
     }
 
     fn tower_height_rng(&self) -> usize {
-        let mut height: usize;
+        let height: usize;
 
-        loop {
-            let rng_state = self.rng_state.load(Ordering::Relaxed);
+        let rng_state = self.hot_data.rng_state.load(Ordering::Relaxed);
+        let mut max_height = self.hot_data.height.load(Ordering::Relaxed);
 
-            let mut x = rng_state;
-            x ^= x << 13;
-            x ^= x >> 17;
-            x ^= x << 5;
+        let mut x = rng_state;
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
 
-            if let Ok(_) =
-                self.rng_state
-                    .compare_exchange(rng_state, x, Ordering::Relaxed, Ordering::Relaxed)
-            {
-                height = ((x & HEIGHT_MASK) + 1) as usize;
-                break;
-            }
-        }
+        self.hot_data.rng_state.store(x, Ordering::Relaxed);
 
-        let mut max_height = self.height.load(Ordering::Relaxed);
-        height = usize::min(height, usize::max(max_height + 1, 4));
+        x = x % (max_height + 2);
+
+        height = ((x & HEIGHT_MASK) + 1) as usize;
+
         while height > max_height {
-            match self.height.compare_exchange(
+            match self.hot_data.height.compare_exchange(
                 max_height,
                 height,
                 Ordering::Relaxed,

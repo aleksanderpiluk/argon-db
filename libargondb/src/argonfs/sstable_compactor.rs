@@ -37,7 +37,7 @@ impl SSTableCompactor {
 fn sstable_compactor_thread(db_ctx: Arc<DbCtx>, close_flag: Arc<AtomicBool>) {
     while !close_flag.load(Ordering::SeqCst) {
         scan_tables_for_compaction(&db_ctx);
-        thread::sleep(time::Duration::from_secs(5));
+        thread::sleep(time::Duration::from_secs(15));
     }
 
     println!("sstable compactor thread finished");

@@ -37,7 +37,7 @@ impl KVPrimaryKeySchema {
         self.0[0]
     }
 
-    fn column_type(&self, idx: usize) -> Result<Box<dyn ColumnType>, KVRuntimeError> {
+    fn column_type(&self, idx: usize) -> Result<&'static dyn ColumnType, KVRuntimeError> {
         ensure!(
             idx < self.column_count() as usize,
             KVRuntimeError::with_msg(
@@ -78,7 +78,7 @@ impl<'a> PrimaryKeyView<'a> {
         })
     }
 
-    fn next_column(&mut self) -> Result<Option<(Box<dyn ColumnType>, &[u8])>, KVRuntimeError> {
+    fn next_column(&mut self) -> Result<Option<(&'static dyn ColumnType, &[u8])>, KVRuntimeError> {
         let column_idx = self.column_idx;
         let value_ptr = self.value_ptr;
 
