@@ -4,6 +4,3 @@ members = ["argondb", "argonfile-reader", "libargonconnector-grpc", "libargondb"
 [profile.dev-no-assert]
 inherits = "dev"
 debug-assertions = false
-
-[profile.release]
-debug = "line-tables-only"
