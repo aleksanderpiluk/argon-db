@@ -1,6 +1,7 @@
 import time
 import csv
 import grpc
+import os
 from statistics import mean, median
 
 def create_channel(target=None):
