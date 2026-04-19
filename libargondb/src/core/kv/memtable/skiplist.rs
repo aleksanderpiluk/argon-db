@@ -80,7 +80,7 @@ impl Skiplist {
             hot_data: CachePadded::new(HotData {
                 height: AtomicUsize::new(0),
                 len: AtomicUsize::new(0),
-                rng_state: AtomicUsize::new(0),
+                rng_state: AtomicUsize::new(7),
             }),
             head: Head::new(),
         }
@@ -300,7 +300,7 @@ impl Skiplist {
 
         self.hot_data.rng_state.store(x, Ordering::Relaxed);
 
-        x = x % (max_height + 2);
+        x = (x.trailing_zeros() as usize) % (max_height + 1);
 
         height = ((x & HEIGHT_MASK) + 1) as usize;
 
