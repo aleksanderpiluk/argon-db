@@ -22,8 +22,8 @@ def make_pk(value: str):
     }
 
 
-def worker(worker_id: int, target: str):
-    channel = create_channel(target)
+def worker(worker_id: int):
+    channel = create_channel()
     client = rpc.ArgonDbStub(channel)
 
     latencies = []
@@ -63,7 +63,7 @@ def worker(worker_id: int, target: str):
     return latencies
 
 
-def main(target="localhost:50051"):
+def main():
     rows = []
 
     for workers in CONCURRENCY:
@@ -72,7 +72,7 @@ def main(target="localhost:50051"):
 
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = [
-                pool.submit(worker, w, target)
+                pool.submit(worker, w)
                 for w in range(workers)
             ]
             for f in as_completed(futures):

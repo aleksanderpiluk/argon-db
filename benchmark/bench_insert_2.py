@@ -11,8 +11,8 @@ TABLE = "bench_table_0"
 CONCURRENCY = [1, 2, 4, 8, 16, 32]
 REQUESTS_PER_WORKER = 29000
 
-def worker(worker_id, target):
-    channel = create_channel(target)
+def worker(worker_id):
+    channel = create_channel()
     client = rpc.ArgonDbStub(channel)
 
     latencies = []
@@ -39,7 +39,7 @@ def worker(worker_id, target):
     return latencies
 
 
-def main(target="localhost:50051"):
+def main():
     rows = []
 
     for workers in CONCURRENCY:
@@ -48,7 +48,7 @@ def main(target="localhost:50051"):
 
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = [
-                pool.submit(worker, w, target)
+                pool.submit(worker, w)
                 for w in range(workers)
             ]
             for f in as_completed(futures):

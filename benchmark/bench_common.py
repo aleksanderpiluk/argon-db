@@ -3,7 +3,7 @@ import csv
 import grpc
 from statistics import mean, median
 
-def create_channel(target="localhost:50051"):
+def create_channel(target="192.168.1.34:50051"):
     return grpc.insecure_channel(
         target,
         options=[
