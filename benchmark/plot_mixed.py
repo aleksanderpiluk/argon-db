@@ -74,25 +74,25 @@ def plot_concurrency(df, concurrency):
         # =========================
         ax2 = ax.twinx()
 
-        ax2.plot(x, sub["mean_ms"], color="black", alpha=0.6, label="opóźnienie (średnia arytmetyczna)")
-        ax2.plot(x, sub["p95_ms"], color="black", alpha=0.4, linestyle="--", label="opóźnienie (95. centyl)")
-        ax2.plot(x, sub["p99_ms"], color="black", alpha=0.3, linestyle=":", label="opóźnienie (99. centyl)")
+        ax2.plot(x, sub["mean_ms"], color="indigo", alpha=1, linewidth=1.5, label="opóźnienie (średnia arytmetyczna)")
+        ax2.plot(x, sub["p95_ms"], color="mediumorchid", alpha=1, linewidth=1, linestyle="-", label="opóźnienie (95. centyl)")
+        ax2.plot(x, sub["p99_ms"], color="deeppink", alpha=0.6, linewidth=0.75, linestyle="-", label="opóźnienie (99. centyl)")
 
         # shaded bands (stability visualization)
         ax2.fill_between(
             x,
             sub["mean_ms"],
             sub["p95_ms"],
-            color="gray",
-            alpha=0.15,
+            color="mediumorchid",
+            alpha=0.1,
         )
 
         ax2.fill_between(
             x,
             sub["p95_ms"],
             sub["p99_ms"],
-            color="gray",
-            alpha=0.08,
+            color="deeppink",
+            alpha=0.04,
         )
 
         ax2.set_ylabel("Opóźnienie [ms]")
@@ -110,7 +110,7 @@ def plot_concurrency(df, concurrency):
             h1 + h2,
             l1 + l2,
             loc="upper center",
-            bbox_to_anchor=(0.5, -0.275),
+            bbox_to_anchor=(0.5, -0.265),
             ncol=3,
             fontsize=8,
             frameon=True
@@ -128,7 +128,7 @@ def plot_concurrency(df, concurrency):
 
     plt.tight_layout()
 
-    plt.subplots_adjust(hspace=0.7, bottom=0.1075)
+    plt.subplots_adjust(hspace=0.85, bottom=0.1075)
 
     out = OUT_DIR / f"mixed_{concurrency}_overview.png"
     plt.savefig(out, dpi=150)
