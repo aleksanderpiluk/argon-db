@@ -1,3 +1,7 @@
+/*
+The skip list implementation with comparator using primary key schema. The implementation is based on https://crates.io/crates/crossbeam-skiplist
+*/
+
 use std::{
     alloc::{Layout, alloc, dealloc, handle_alloc_error},
     cmp,

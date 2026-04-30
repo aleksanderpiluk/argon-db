@@ -82,8 +82,7 @@ impl SummaryBuilder {
             .map_err(|e| ArgonfileBuilderError::from_msg("ArgonfileBlockWriterError"))?;
 
         let checksum_algo = ChecksumAlgoResolver::for_checksum_type(ChecksumType::CRC32);
-        let compression_algo =
-            CompressionAlgoResolver::for_compression_type(CompressionType::Uncompressed);
+        let compression_algo = CompressionAlgoResolver::for_default_compression_type();
 
         let ptr = block_builder.build(
             writer,

@@ -34,7 +34,11 @@ impl BlockParser {
         let buf_decompressed = vec![0u8; decompressed_size].into_boxed_slice();
 
         let mut buf_decompressed_writer = Cursor::new(buf_decompressed);
-        compression_algo.decompress(buf_compressed, &mut buf_decompressed_writer)?;
+        compression_algo.decompress(
+            buf_compressed,
+            &mut buf_decompressed_writer,
+            decompressed_size,
+        )?;
         let buf_decompressed = buf_decompressed_writer.into_inner();
 
         let checksum_type = block_header.checksum_type;

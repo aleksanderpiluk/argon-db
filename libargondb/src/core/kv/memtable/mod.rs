@@ -1,7 +1,6 @@
 mod flush_pre_stats;
 mod flush_request;
 mod lock;
-mod mutation;
 mod skiplist;
 
 pub use flush_pre_stats::KVFlushPreStats;

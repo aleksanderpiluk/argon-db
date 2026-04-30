@@ -16,7 +16,12 @@ impl CompressionAlgo for CompressionAlgoUncompressed {
             .map_err(|e| CompressionError::WriteError(e))
     }
 
-    fn decompress<W: Write>(&self, data: &[u8], out: &mut W) -> Result<(), CompressionError> {
+    fn decompress<W: Write>(
+        &self,
+        data: &[u8],
+        out: &mut W,
+        decompressed_buffer_size: usize,
+    ) -> Result<(), CompressionError> {
         out.write_all(data)
             .map_err(|e| CompressionError::WriteError(e))
     }

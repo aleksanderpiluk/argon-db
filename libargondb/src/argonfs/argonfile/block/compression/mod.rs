@@ -5,6 +5,7 @@ mod compression_error;
 mod compression_type;
 
 pub use compression_algo::CompressionAlgo;
+pub use compression_algo::CompressionStrategy;
 pub use compression_algo_resolver::CompressionAlgoResolver;
 pub use compression_error::CompressionError;
 pub use compression_type::CompressionType;

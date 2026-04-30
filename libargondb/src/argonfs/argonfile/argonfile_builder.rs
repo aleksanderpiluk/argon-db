@@ -227,8 +227,7 @@ impl<'a, W: Write> BlocksBuildingOrchestrator<'a, W> {
             .ok_or(ArgonfileBuilderError::from_msg("no block builder"))?;
 
         let checksum_algo = ChecksumAlgoResolver::for_checksum_type(ChecksumType::CRC32);
-        let compression_algo =
-            CompressionAlgoResolver::for_compression_type(CompressionType::Uncompressed);
+        let compression_algo = CompressionAlgoResolver::for_default_compression_type();
 
         let block_ptr = block_builder.build(
             &mut self.writer,
