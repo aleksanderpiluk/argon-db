@@ -44,6 +44,6 @@ pub struct CompressionTypeParseError(u8);
 
 impl From<CompressionTypeParseError> for ArgonfileParseError {
     fn from(value: CompressionTypeParseError) -> Self {
-        todo!()
+        Self
     }
 }

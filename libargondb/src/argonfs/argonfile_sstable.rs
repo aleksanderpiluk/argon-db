@@ -60,13 +60,13 @@ pub enum ArgonfileSSTableLoadError {
 
 impl From<io::Error> for ArgonfileSSTableLoadError {
     fn from(value: io::Error) -> Self {
-        todo!()
+        Self::IOError(value)
     }
 }
 
 impl From<ArgonfileReaderError> for ArgonfileSSTableLoadError {
     fn from(value: ArgonfileReaderError) -> Self {
-        todo!()
+        Self::ArgonfileReaderError(value)
     }
 }
 
@@ -346,7 +346,6 @@ impl Future for ReadBlockFuture {
 
         let mut guard = guard.to_exclusive();
 
-        // TODO: Check
         assert!(guard.is_acquired());
         let is_dispatched = guard.is_read_dispatched();
 

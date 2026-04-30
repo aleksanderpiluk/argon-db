@@ -50,22 +50,23 @@ impl ArgonfileReader {
 pub enum ArgonfileReaderError {
     FileHandleError(FileHandleError),
     ArgonfileParseError(ArgonfileParseError),
+    IOError(io::Error),
 }
 
 impl From<ArgonfileParseError> for ArgonfileReaderError {
     fn from(value: ArgonfileParseError) -> Self {
-        todo!()
+        Self::ArgonfileParseError(value)
     }
 }
 
 impl From<FileHandleError> for ArgonfileReaderError {
     fn from(value: FileHandleError) -> Self {
-        todo!()
+        Self::FileHandleError(value)
     }
 }
 
 impl From<io::Error> for ArgonfileReaderError {
     fn from(value: io::Error) -> Self {
-        todo!()
+        Self::IOError(value)
     }
 }

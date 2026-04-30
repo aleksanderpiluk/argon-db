@@ -191,7 +191,7 @@ pub struct ArgonFsInitError {}
 
 impl Display for ArgonFsInitError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        write!(f, "ArgonFsInitError")
     }
 }
 
@@ -205,12 +205,12 @@ pub enum ArgonFsError {
 
 impl From<ArgonfileSSTableLoadError> for ArgonFsError {
     fn from(value: ArgonfileSSTableLoadError) -> Self {
-        todo!()
+        Self::ArgonfileLoadError(value)
     }
 }
 
 impl From<FileSystemError> for ArgonFsError {
     fn from(value: FileSystemError) -> Self {
-        todo!()
+        Self::FileSystemError(value)
     }
 }

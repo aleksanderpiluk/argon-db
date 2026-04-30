@@ -58,7 +58,11 @@ impl KVTableNameConversionError {
 
 impl std::fmt::Display for KVTableNameConversionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        write!(
+            f,
+            "Given value cannot be converted to table name: {}",
+            self.given_value
+        )
     }
 }
 

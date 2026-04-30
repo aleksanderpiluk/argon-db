@@ -19,7 +19,6 @@ impl InRowMutation {
         writer: &mut impl ArgonfileWrite,
         mutation: &dyn KVMutation,
     ) -> Result<usize, ArgonfileWriterError> {
-        // TODO: ERROR HANDLING
         let mut writer = ArgonfileSizeCountingWriter::new(writer);
 
         writer.write(&u64::to_le_bytes(mutation.timestamp()))?;

@@ -9,11 +9,17 @@ pub struct ColumnTypeU16Array;
 
 impl ColumnType for ColumnTypeU16Array {
     fn eq(&self, this: &[u8], that: &[u8]) -> bool {
-        todo!()
+        let a = Self::deserialize(this).unwrap();
+        let b = Self::deserialize(that).unwrap();
+
+        a.eq(&b)
     }
 
     fn cmp(&self, this: &[u8], that: &[u8]) -> std::cmp::Ordering {
-        todo!()
+        let a = Self::deserialize(this).unwrap();
+        let b = Self::deserialize(that).unwrap();
+
+        a.cmp(&b)
     }
 
     fn code(&self) -> ColumnTypeCode {

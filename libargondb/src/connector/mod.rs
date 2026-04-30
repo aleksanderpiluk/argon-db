@@ -14,7 +14,9 @@ pub enum ConnectorError {
 
 impl std::fmt::Display for ConnectorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        match self {
+            Self::UnexpectedError(e) => write!(f, "Unexpected connection error: {}", e),
+        }
     }
 }
 

@@ -131,8 +131,6 @@ impl KVTable {
         let mut result_iter = KVMergeScanIter::new(pk_schema.clone());
 
         for scannable in table_state.list_scannable()? {
-            // TODO: Scannable check preconditions (bloom filters etc.)
-
             let scan_result = scan_op.scan(scannable).await?;
             if let KVRangeScanResult::Iter(scannable_iter) = scan_result {
                 #[cfg(debug_assertions)]

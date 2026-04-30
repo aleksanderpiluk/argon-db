@@ -12,6 +12,6 @@ pub enum CompressionError {
 
 impl From<CompressionError> for ArgonfileParseError {
     fn from(value: CompressionError) -> Self {
-        todo!()
+        Self
     }
 }

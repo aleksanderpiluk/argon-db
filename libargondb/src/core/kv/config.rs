@@ -1,6 +1,6 @@
 #[derive(Debug, Clone)]
 pub struct KVConfig {
-    pub memtable_size: usize, // TODO:
+    pub memtable_size: usize,
     pub mutation_max_size: usize,
 }
 
@@ -13,13 +13,5 @@ impl Default for KVConfig {
             memtable_size: DEFAULT_MEMTABLE_SIZE,
             mutation_max_size: DEFAULT_MUTATION_MAX_SIZE,
         }
-    }
-}
-
-pub struct KVConfigValidator;
-
-impl KVConfigValidator {
-    pub fn validate(config: &KVConfig) -> Result<(), ()> {
-        todo!()
     }
 }

@@ -7,6 +7,7 @@ use std::{
 };
 
 use async_trait::async_trait;
+use base64::{Engine, prelude::BASE64_STANDARD};
 use libargonconnector_grpc::argondb_service_definition::{
     self, ColumnDefinition, CreateTableRequest, InsertMutationsRequest, InsertMutationsResponse,
     ListTablesResponse, MutateRowRequest, PrimaryKeyMarker, ReadRowRequest, ReadRowResponse,
@@ -392,7 +393,7 @@ impl argondb_service_definition::argon_db_server::ArgonDb for ArgonDbHandlers {
     }
 
     async fn mutate_row(&self, request: Request<MutateRowRequest>) -> Result<Response<()>, Status> {
-        todo!()
+        unimplemented!()
     }
 }
 
@@ -419,7 +420,12 @@ impl GrpcHandlerUtils {
                 let val = row
                     .column_deserialized::<ColumnTypeBytes>(&schema.column_name)
                     .unwrap();
-                todo!()
+
+                let encoded = BASE64_STANDARD.encode(&val);
+
+                Value {
+                    kind: Some(Kind::StringValue(encoded)),
+                }
             }
             ColumnTypeCode::Text => {
                 let val = row

@@ -16,6 +16,6 @@ pub enum ChecksumError {
 
 impl From<ChecksumError> for ArgonfileParseError {
     fn from(value: ChecksumError) -> Self {
-        todo!()
+        Self
     }
 }

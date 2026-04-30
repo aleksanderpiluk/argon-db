@@ -40,6 +40,6 @@ pub struct ChecksumTypeParseError(u8);
 
 impl From<ChecksumTypeParseError> for ArgonfileParseError {
     fn from(value: ChecksumTypeParseError) -> Self {
-        todo!()
+        Self
     }
 }

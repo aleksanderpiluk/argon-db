@@ -5,9 +5,8 @@ use signal_hook::iterator::exfiltrator::WithOrigin;
 use signal_hook::{consts::TERM_SIGNALS, flag};
 
 use crate::errors::{CriticalResult, OrCriticalError};
-use crate::supervisor::Lifecycle;
 
-pub fn handle_signals(lifecycle: &Lifecycle) -> CriticalResult<()> {
+pub fn handle_signals() -> CriticalResult<()> {
     let term_now = Arc::new(AtomicBool::new(false));
 
     for sig in TERM_SIGNALS {
@@ -28,8 +27,6 @@ pub fn handle_signals(lifecycle: &Lifecycle) -> CriticalResult<()> {
             }
         }
     }
-
-    // lifecycle.close();
 
     Ok(())
 }

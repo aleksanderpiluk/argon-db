@@ -16,7 +16,7 @@ use crate::{
     init::run_init_thread,
     shutdown::run_shutdown_thread,
     signals_handler::handle_signals,
-    supervisor::{Lifecycle, SystemCtx, run_supervisor_thread},
+    supervisor::{SystemCtx, run_supervisor_thread},
 };
 
 fn main() {
@@ -41,7 +41,7 @@ fn main() {
     run_supervisor_thread();
 
     println!("database is running, watching for signals");
-    handle_signals(&Lifecycle {}).unwrap();
+    handle_signals().unwrap();
 
     run_shutdown_thread(system_ctx).ok_or_abort();
 }

@@ -72,7 +72,11 @@ impl KVTableIdConversionError {
 
 impl Display for KVTableIdConversionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        write!(
+            f,
+            "Given value cannot be converted to table id: {}",
+            self.given_value
+        )
     }
 }
 
